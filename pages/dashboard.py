@@ -7,38 +7,41 @@ from pathlib import Path
 STATE_FILE = Path(__file__).parent.parent / "config" / "state.json"
 
 DEFAULT_STATE = {
-    "last_scan": None,
-    "last_email_sent": None,
-    "red_indicators": [],
-    "report_date": None,
-    "deadline": None,
-    "status": "idle",
-    "total_scans": 0,
+    "last_scan":        None,
+    "last_email_sent":  None,
+    "red_indicators":   [],
+    "report_date":      None,
+    "deadline":         None,
+    "status":           "idle",
+    "total_scans":      0,
     "total_emails_sent": 0,
 }
 
-def load_state():
+REFRESH_INTERVAL_MS = 60_000  # 60 giây
+
+
+def load_state() -> dict:
     if STATE_FILE.exists():
         try:
-            with open(STATE_FILE, encoding="utf-8") as f:
-                content = f.read().strip()
-            if not content:
-                return DEFAULT_STATE.copy()
-            return json.loads(content)
+            content = STATE_FILE.read_text(encoding="utf-8").strip()
+            return json.loads(content) if content else DEFAULT_STATE.copy()
         except Exception:
-            # File corrupt → xoá và trả về default
             try:
                 STATE_FILE.unlink()
             except Exception:
                 pass
-            return DEFAULT_STATE.copy()
     return DEFAULT_STATE.copy()
 
+
 def render(config: dict):
-    state = load_state()
+    state      = load_state()
+    sched_cfg  = config.get("scheduler", {})
+    deadline_h = sched_cfg.get("reply_deadline_hour", 11)
+    deadline_m = sched_cfg.get("reply_deadline_minute", 45)
+    red_count  = len(state.get("red_indicators", []))
+    cfg_ok     = bool(config.get("email", {}).get("address"))
 
-
-
+    # ── Header ────────────────────────────────────────────────────────────────
     st.markdown("""
     <div class="sys-header">
         <div>
@@ -49,29 +52,28 @@ def render(config: dict):
     </div>
     """, unsafe_allow_html=True)
 
+    # ── Status bar ────────────────────────────────────────────────────────────
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
-        now = datetime.now()
         st.markdown(f"""
         <div class="status-row">
             <div class="dot {'green' if state['status'] == 'active' else 'gray'}"></div>
-            <span style="font-family:var(--mono); font-size:12px;">HỆ THỐNG: {'ĐANG CHẠY' if state['status'] == 'active' else 'STANDBY'}</span>
-            <span style="margin-left: auto; font-family:var(--mono); font-size:11px; color:var(--text-muted);">{now.strftime('%d/%m/%Y %H:%M:%S')}</span>
+            <span style="font-family:var(--mono); font-size:12px;">
+                HỆ THỐNG: {'ĐANG CHẠY' if state['status'] == 'active' else 'STANDBY'}
+            </span>
+            <span style="margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--text-muted);">
+                {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
+            </span>
         </div>
         """, unsafe_allow_html=True)
-
     with col2:
-        deadline_h = config.get("scheduler", {}).get("reply_deadline_hour", 11)
-        deadline_m = config.get("scheduler", {}).get("reply_deadline_minute", 45)
         st.markdown(f"""
         <div class="status-row">
             <div class="dot orange"></div>
             <span style="font-size:12px;">Deadline: <strong>{deadline_h:02d}:{deadline_m:02d}</strong> ngày hôm sau</span>
         </div>
         """, unsafe_allow_html=True)
-
     with col3:
-        cfg_ok = bool(config.get("email", {}).get("address"))
         st.markdown(f"""
         <div class="status-row">
             <div class="dot {'green' if cfg_ok else 'red'}"></div>
@@ -81,8 +83,7 @@ def render(config: dict):
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    red_count = len(state.get("red_indicators", []))
-
+    # ── Metric cards ──────────────────────────────────────────────────────────
     st.markdown(f"""
     <div class="metric-grid">
         <div class="metric-card red">
@@ -108,22 +109,31 @@ def render(config: dict):
     </div>
     """, unsafe_allow_html=True)
 
+    # ── Main content ──────────────────────────────────────────────────────────
     col_a, col_b = st.columns([3, 2])
 
     with col_a:
         st.markdown('<div class="section-label">LUỒNG VẬN HÀNH</div>', unsafe_allow_html=True)
-
         steps = [
-            ("01", "Tiếp nhận Email", f"Quét email từ '{config.get('soc_sender_name','SOC Canh bao')}' qua IMAP", "green" if state.get("last_scan") else "gray"),
-            ("02", "Bóc tách Chỉ số Đỏ", f"{red_count} chỉ số đỏ được nhận diện từ bảng KPI", "red" if red_count > 0 else "gray"),
-            ("03", "Nhân viên Giải trình", "Cập nhật nội dung vào Google Sheets theo từng tab", "orange" if red_count > 0 else "gray"),
-            ("04", "Tổng hợp & Phản hồi", f"Tự động gửi reply trước deadline {deadline_h:02d}:{deadline_m:02d}", "green" if state.get("last_email_sent") else "gray"),
+            ("01", "Tiếp nhận Email",
+             f"Quét email từ '{config.get('soc_sender_name', 'SOC Canh bao')}' qua IMAP",
+             "green" if state.get("last_scan") else "gray"),
+            ("02", "Bóc tách Chỉ số Đỏ",
+             f"{red_count} chỉ số đỏ được nhận diện từ bảng KPI",
+             "red" if red_count > 0 else "gray"),
+            ("03", "Nhân viên Giải trình",
+             "Cập nhật nội dung vào Google Sheets theo từng tab",
+             "orange" if red_count > 0 else "gray"),
+            ("04", "Tổng hợp & Phản hồi",
+             f"Tự động gửi reply trước deadline {deadline_h:02d}:{deadline_m:02d}",
+             "green" if state.get("last_email_sent") else "gray"),
         ]
-
         for num, title, desc, color in steps:
+            text_color = "red" if color == "red" else ("text-muted" if color == "gray" else color)
             st.markdown(f"""
             <div class="status-row" style="gap:14px; align-items:flex-start;">
-                <div style="font-family:var(--mono); font-size:1.5rem; font-weight:700; color:var(--{'red' if color=='red' else 'text-muted' if color=='gray' else color}); min-width:32px; line-height:1;">{num}</div>
+                <div style="font-family:var(--mono); font-size:1.5rem; font-weight:700;
+                    color:var(--{text_color}); min-width:32px; line-height:1;">{num}</div>
                 <div>
                     <div style="font-weight:600; font-size:13px; color:var(--text);">{title}</div>
                     <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">{desc}</div>
@@ -134,7 +144,6 @@ def render(config: dict):
 
     with col_b:
         st.markdown('<div class="section-label">CHỈ SỐ ĐỎ HIỆN TẠI</div>', unsafe_allow_html=True)
-
         indicators = state.get("red_indicators", [])
         if indicators:
             for ind in indicators:
@@ -163,36 +172,26 @@ def render(config: dict):
             if st.button("📤 Gửi Báo cáo", use_container_width=True):
                 st.session_state.page = "send_email"
                 st.rerun()
-
         if st.button("⚙️ Vào Cài đặt", use_container_width=True):
             st.session_state.page = "settings"
             st.rerun()
 
-    # ── Auto-refresh: dùng JavaScript, không block UI ──────────────
-    # Reset timer khi vừa đăng nhập, không refresh ngay
-    if st.session_state.get("just_logged_in"):
-        st.session_state.just_logged_in = False
-    else:
-        col_r, col_t = st.columns([4, 1])
-        with col_t:
-            auto_refresh = st.toggle("🔄 Tự động cập nhật", value=False, key="dash_auto_refresh")
-        if auto_refresh:
-            with col_r:
-                st.markdown(
-                    '<div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);padding:8px 0;">' +
-                    '🔄 Tự động cập nhật mỗi 60 giây</div>',
-                    unsafe_allow_html=True
-                )
-            # Dùng JavaScript để reload sau 60s — không block UI, không ảnh hưởng sidebar
-            st.markdown("""
-            <script>
-            (function() {
-                if (!window._socRefreshSet) {
-                    window._socRefreshSet = true;
-                    setTimeout(function() {
-                        window.location.reload();
-                    }, 60000);
-                }
-            })();
-            </script>
-            """, unsafe_allow_html=True)
+    # ── Auto-refresh ──────────────────────────────────────────────────────────
+    # Bỏ qua lần đầu sau đăng nhập để tránh refresh ngay lập tức
+    if st.session_state.pop("just_logged_in", False):
+        return
+
+    col_label, col_toggle = st.columns([4, 1])
+    with col_toggle:
+        auto_refresh = st.toggle("🔄 Tự động cập nhật", value=False, key="dash_auto_refresh")
+
+    if auto_refresh:
+        from streamlit_autorefresh import st_autorefresh
+        with col_label:
+            st.markdown(
+                '<div style="font-family:var(--mono); font-size:11px; '
+                'color:var(--text-muted); padding:8px 0;">'
+                f'🔄 Tự động cập nhật mỗi {REFRESH_INTERVAL_MS // 1000} giây</div>',
+                unsafe_allow_html=True,
+            )
+        st_autorefresh(interval=REFRESH_INTERVAL_MS, key="dash_refresh_timer")

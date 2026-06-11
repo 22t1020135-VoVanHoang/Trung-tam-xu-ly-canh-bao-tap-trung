@@ -8,21 +8,71 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-# Page config
+# ─── Khởi tạo session state TRƯỚC mọi thứ ───────────────────────
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "last_active" not in st.session_state:
+    st.session_state.last_active = None
+if "page" not in st.session_state:
+    st.session_state.page = "dashboard"
+if "config_saved" not in st.session_state:
+    st.session_state.config_saved = False
+if "logs" not in st.session_state:
+    st.session_state.logs = []
+if "last_email_data" not in st.session_state:
+    st.session_state.last_email_data = None
+
+# ─── Kiểm tra đăng nhập sớm để biết trạng thái ─────────────────
+from pages.login import is_logged_in, render_login
+_logged_in = is_logged_in()
+
+# Page config — sidebar collapsed khi chưa đăng nhập, expanded khi đã đăng nhập
 st.set_page_config(
     page_title="SOC Alert Automation - HUE",
     page_icon="🔴",
     layout="wide",
-    initial_sidebar_state="auto"
+    initial_sidebar_state="expanded" if _logged_in else "collapsed"
 )
 
 # Load custom CSS
-def load_css():
-    st.markdown("""
+def load_css(logged_in: bool = False):
+    # CSS base luôn load
+    sidebar_css = """
+    /* Force sidebar luôn hiển thị – kể cả khi browser lưu trạng thái collapsed */
+    [data-testid="stSidebar"],
+    [data-testid="stSidebar"][aria-expanded="false"] {
+        transform: translateX(0px) !important;
+        min-width: 244px !important;
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        background-color: var(--surface) !important;
+        border-right: 1px solid var(--border) !important;
+    }
+    section[data-testid="stSidebarContent"] {
+        display: flex !important;
+        visibility: visible !important;
+        width: 100% !important;
+    }
+    [data-testid="stSidebar"] .stMarkdown h1,
+    [data-testid="stSidebar"] .stMarkdown h2,
+    [data-testid="stSidebar"] .stMarkdown h3 {
+        color: var(--text) !important;
+    }
+    /* Ẩn nút đóng/mở sidebar – điều hướng luôn cố định */
+    [data-testid="stSidebarCollapseButton"] { display: none !important; }
+    [data-testid="collapsedControl"]        { display: none !important; }
+    """ if logged_in else """
+    /* Ẩn sidebar khi chưa đăng nhập */
+    [data-testid="stSidebar"]        { display: none !important; }
+    [data-testid="collapsedControl"] { display: none !important; }
+    """
+
+    st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap');
 
-    :root {
+    :root {{
         --red: #E53E3E;
         --red-light: #FEB2B2;
         --red-dark: #9B2335;
@@ -37,38 +87,28 @@ def load_css():
         --text-muted: #6B6B78;
         --mono: 'IBM Plex Mono', monospace;
         --sans: 'IBM Plex Sans Thai', sans-serif;
-    }
+    }}
 
-    html, body, [class*="css"] {
+    html, body, [class*="css"] {{
         font-family: var(--sans) !important;
         background-color: var(--bg) !important;
         color: var(--text) !important;
-    }
+    }}
 
-    .stApp {
+    .stApp {{
         background-color: var(--bg) !important;
-    }
+    }}
 
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background-color: var(--surface) !important;
-        border-right: 1px solid var(--border) !important;
-    }
-
-    [data-testid="stSidebar"] .stMarkdown h1,
-    [data-testid="stSidebar"] .stMarkdown h2,
-    [data-testid="stSidebar"] .stMarkdown h3 {
-        color: var(--text) !important;
-    }
+    {sidebar_css}
 
     /* Main content */
-    .main .block-container {
+    .main .block-container {{
         padding: 2rem 2.5rem !important;
         max-width: 1400px !important;
-    }
+    }}
 
     /* Header */
-    .sys-header {
+    .sys-header {{
         display: flex;
         align-items: center;
         gap: 16px;
@@ -79,8 +119,8 @@ def load_css():
         margin-bottom: 28px;
         position: relative;
         overflow: hidden;
-    }
-    .sys-header::before {
+    }}
+    .sys-header::before {{
         content: '';
         position: absolute;
         top: 0; right: 0;
@@ -92,8 +132,8 @@ def load_css():
             rgba(229,62,62,0.05) 10px,
             rgba(229,62,62,0.05) 20px
         );
-    }
-    .sys-header .badge {
+    }}
+    .sys-header .badge {{
         background: var(--red);
         color: white;
         font-family: var(--mono);
@@ -103,70 +143,70 @@ def load_css():
         text-transform: uppercase;
         letter-spacing: 1px;
         animation: pulse-badge 2s infinite;
-    }
-    @keyframes pulse-badge {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.6; }
-    }
-    .sys-header h1 {
+    }}
+    @keyframes pulse-badge {{
+        0%, 100% {{ opacity: 1; }}
+        50% {{ opacity: 0.6; }}
+    }}
+    .sys-header h1 {{
         font-size: 1.4rem !important;
         font-weight: 700 !important;
         margin: 0 !important;
         color: white !important;
         letter-spacing: -0.5px;
-    }
-    .sys-header .subtitle {
+    }}
+    .sys-header .subtitle {{
         font-family: var(--mono);
         font-size: 11px;
         color: rgba(255,255,255,0.5);
         margin-top: 2px;
-    }
+    }}
 
     /* Metric cards */
-    .metric-grid {
+    .metric-grid {{
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 12px;
         margin-bottom: 24px;
-    }
-    .metric-card {
+    }}
+    .metric-card {{
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 4px;
         padding: 16px 20px;
         position: relative;
-    }
-    .metric-card.red { border-left: 3px solid var(--red); }
-    .metric-card.green { border-left: 3px solid #276749; }
-    .metric-card.orange { border-left: 3px solid var(--orange); }
-    .metric-card.blue { border-left: 3px solid #2B6CB0; }
+    }}
+    .metric-card.red {{ border-left: 3px solid var(--red); }}
+    .metric-card.green {{ border-left: 3px solid #276749; }}
+    .metric-card.orange {{ border-left: 3px solid var(--orange); }}
+    .metric-card.blue {{ border-left: 3px solid #2B6CB0; }}
 
-    .metric-card .label {
+    .metric-card .label {{
         font-family: var(--mono);
         font-size: 10px;
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 1px;
         margin-bottom: 8px;
-    }
-    .metric-card .value {
+    }}
+    .metric-card .value {{
         font-size: 2rem;
         font-weight: 700;
         line-height: 1;
-    }
-    .metric-card.red .value { color: var(--red); }
-    .metric-card.green .value { color: #48BB78; }
-    .metric-card.orange .value { color: #ED8936; }
-    .metric-card.blue .value { color: #63B3ED; }
+    }}
+    .metric-card.red .value {{ color: var(--red); }}
+    .metric-card.green .value {{ color: #48BB78; }}
+    .metric-card.orange .value {{ color: #ED8936; }}
+    .metric-card.blue .value {{ color: #63B3ED; }}
 
-    .metric-card .sub {
+    .metric-card .sub {{
         font-size: 11px;
         color: var(--text-muted);
         margin-top: 4px;
-    }
+    }}
 
     /* Status indicators */
-    .status-row {
+    .status-row {{
         display: flex;
         align-items: center;
         gap: 8px;
@@ -176,19 +216,19 @@ def load_css():
         border-radius: 3px;
         margin-bottom: 6px;
         font-size: 13px;
-    }
-    .dot {
+    }}
+    .dot {{
         width: 8px; height: 8px;
         border-radius: 50%;
         flex-shrink: 0;
-    }
-    .dot.red { background: var(--red); box-shadow: 0 0 6px var(--red); }
-    .dot.green { background: #48BB78; box-shadow: 0 0 6px #48BB78; }
-    .dot.orange { background: #ED8936; box-shadow: 0 0 6px #ED8936; }
-    .dot.gray { background: var(--text-muted); }
+    }}
+    .dot.red {{ background: var(--red); box-shadow: 0 0 6px var(--red); }}
+    .dot.green {{ background: #48BB78; box-shadow: 0 0 6px #48BB78; }}
+    .dot.orange {{ background: #ED8936; box-shadow: 0 0 6px #ED8936; }}
+    .dot.gray {{ background: var(--text-muted); }}
 
     /* Section headers */
-    .section-label {
+    .section-label {{
         font-family: var(--mono);
         font-size: 11px;
         color: var(--text-muted);
@@ -197,10 +237,10 @@ def load_css():
         padding-bottom: 8px;
         border-bottom: 1px solid var(--border);
         margin-bottom: 16px;
-    }
+    }}
 
     /* Buttons */
-    .stButton > button {
+    .stButton > button {{
         background: var(--surface2) !important;
         color: var(--text) !important;
         border: 1px solid var(--border) !important;
@@ -209,48 +249,48 @@ def load_css():
         font-size: 12px !important;
         padding: 8px 18px !important;
         transition: all 0.15s !important;
-    }
-    .stButton > button:hover {
+    }}
+    .stButton > button:hover {{
         border-color: var(--red) !important;
         color: var(--red) !important;
         background: rgba(229,62,62,0.05) !important;
-    }
+    }}
 
     /* Primary button */
-    .stButton > button[kind="primary"] {
+    .stButton > button[kind="primary"] {{
         background: var(--red) !important;
         color: white !important;
         border-color: var(--red) !important;
-    }
-    .stButton > button[kind="primary"]:hover {
+    }}
+    .stButton > button[kind="primary"]:hover {{
         background: var(--red-dark) !important;
         border-color: var(--red-dark) !important;
         color: white !important;
-    }
+    }}
 
     /* Input fields */
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea,
-    .stSelectbox > div > div > select {
+    .stSelectbox > div > div > select {{
         background: var(--surface2) !important;
         border: 1px solid var(--border) !important;
         border-radius: 3px !important;
         color: var(--text) !important;
         font-family: var(--sans) !important;
-    }
+    }}
     .stTextInput > div > div > input:focus,
-    .stTextArea > div > div > textarea:focus {
+    .stTextArea > div > div > textarea:focus {{
         border-color: var(--red) !important;
         box-shadow: 0 0 0 1px var(--red) !important;
-    }
+    }}
 
     /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
+    .stTabs [data-baseweb="tab-list"] {{
         background: transparent !important;
         border-bottom: 1px solid var(--border) !important;
         gap: 0 !important;
-    }
-    .stTabs [data-baseweb="tab"] {
+    }}
+    .stTabs [data-baseweb="tab"] {{
         background: transparent !important;
         color: var(--text-muted) !important;
         font-family: var(--mono) !important;
@@ -258,92 +298,92 @@ def load_css():
         padding: 10px 20px !important;
         border-bottom: 2px solid transparent !important;
         border-radius: 0 !important;
-    }
-    .stTabs [aria-selected="true"] {
+    }}
+    .stTabs [aria-selected="true"] {{
         color: var(--red) !important;
         border-bottom-color: var(--red) !important;
         background: transparent !important;
-    }
+    }}
 
     /* Expander */
-    .streamlit-expanderHeader {
+    .streamlit-expanderHeader {{
         background: var(--surface) !important;
         border: 1px solid var(--border) !important;
         border-radius: 3px !important;
         font-family: var(--mono) !important;
         font-size: 12px !important;
         color: var(--text) !important;
-    }
+    }}
 
     /* Dataframe */
-    .stDataFrame {
+    .stDataFrame {{
         border: 1px solid var(--border) !important;
         border-radius: 3px !important;
-    }
+    }}
 
     /* Alert boxes */
-    .alert-box {
+    .alert-box {{
         padding: 14px 18px;
         border-radius: 3px;
         margin-bottom: 12px;
         font-size: 13px;
         border-left: 3px solid;
-    }
-    .alert-box.error {
+    }}
+    .alert-box.error {{
         background: rgba(229,62,62,0.08);
         border-color: var(--red);
         color: #FEB2B2;
-    }
-    .alert-box.success {
+    }}
+    .alert-box.success {{
         background: rgba(39,103,73,0.15);
         border-color: #276749;
         color: #9AE6B4;
-    }
-    .alert-box.warning {
+    }}
+    .alert-box.warning {{
         background: rgba(221,107,32,0.1);
         border-color: var(--orange);
         color: #FBBF24;
-    }
-    .alert-box.info {
+    }}
+    .alert-box.info {{
         background: rgba(43,108,176,0.1);
         border-color: #2B6CB0;
         color: #90CDF4;
-    }
+    }}
 
     /* Timeline */
-    .timeline-item {
+    .timeline-item {{
         display: flex;
         gap: 16px;
         padding: 12px 0;
         border-bottom: 1px solid var(--border);
-    }
-    .timeline-time {
+    }}
+    .timeline-time {{
         font-family: var(--mono);
         font-size: 11px;
         color: var(--text-muted);
         min-width: 80px;
         padding-top: 2px;
-    }
-    .timeline-content { flex: 1; }
-    .timeline-title {
+    }}
+    .timeline-content {{ flex: 1; }}
+    .timeline-title {{
         font-size: 13px;
         font-weight: 600;
         color: var(--text);
         margin-bottom: 3px;
-    }
-    .timeline-desc {
+    }}
+    .timeline-desc {{
         font-size: 12px;
         color: var(--text-muted);
-    }
+    }}
 
     /* Code blocks */
-    .stCode {
+    .stCode {{
         background: var(--surface) !important;
         border: 1px solid var(--border) !important;
-    }
+    }}
 
     /* Sidebar nav items */
-    .nav-item {
+    .nav-item {{
         display: flex;
         align-items: center;
         gap: 10px;
@@ -355,38 +395,39 @@ def load_css():
         transition: all 0.15s;
         color: var(--text-muted);
         border: 1px solid transparent;
-    }
-    .nav-item:hover, .nav-item.active {
+    }}
+    .nav-item:hover, .nav-item.active {{
         background: rgba(229,62,62,0.08);
         color: var(--text);
         border-color: rgba(229,62,62,0.2);
-    }
-    .nav-item.active {
+    }}
+    .nav-item.active {{
         color: var(--red);
-    }
+    }}
 
-    /* Hide Streamlit branding - CHỈ ẩn branding, KHÔNG ẩn header/toolbar */
-    #MainMenu { visibility: hidden; }
-    footer { visibility: hidden; }
-    .stDeployButton { display: none !important; }
-    [data-testid="stToolbar"] { display: none !important; }
-
-    /* Luôn hiện nút mở/đóng sidebar */
-    [data-testid="collapsedControl"] {
-        display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-    }
+    /* Ẩn Deploy button & toolbar */
+    header[data-testid="stHeader"] {{
+        background-color: var(--bg) !important;
+        border-bottom: none !important;
+    }}
+    [data-testid="stToolbar"] {{ display: none !important; }}
+    [data-testid="stDecoration"] {{ display: none !important; }}
+    .stDeployButton {{ display: none !important; }}
+    /* Ẩn nút đóng sidebar – giữ điều hướng luôn hiển thị */
+    [data-testid="stSidebarCollapseButton"] {{ display: none !important; }}
+    [data-testid="collapsedControl"] {{ display: none !important; }}
+    #MainMenu {{ visibility: hidden !important; }}
+    footer {{ visibility: hidden !important; }}
 
     /* Config form */
-    .config-section {
+    .config-section {{
         background: var(--surface);
         border: 1px solid var(--border);
         border-radius: 4px;
         padding: 20px;
         margin-bottom: 16px;
-    }
-    .config-section h4 {
+    }}
+    .config-section h4 {{
         font-family: var(--mono);
         font-size: 11px;
         text-transform: uppercase;
@@ -395,30 +436,23 @@ def load_css():
         margin-bottom: 16px;
         padding-bottom: 8px;
         border-bottom: 1px solid var(--border);
-    }
+    }}
 
     /* Progress bar */
-    .stProgress > div > div {
+    .stProgress > div > div {{
         background-color: var(--red) !important;
-    }
+    }}
     </style>
     """, unsafe_allow_html=True)
 
-load_css()
+load_css(logged_in=_logged_in)
 
-# Session state initialization
-if "page" not in st.session_state:
-    st.session_state.page = "dashboard"
-if "config_saved" not in st.session_state:
-    st.session_state.config_saved = False
-if "logs" not in st.session_state:
-    st.session_state.logs = []
-if "last_email_data" not in st.session_state:
-    st.session_state.last_email_data = None
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-if "last_active" not in st.session_state:
-    st.session_state.last_active = None
+# ─── Nếu chưa đăng nhập: hiện form login rồi dừng ──────────────
+if not _logged_in:
+    render_login()
+    st.stop()
+
+# ─── Đã đăng nhập: load config và hiện app ──────────────────────
 
 # Config file path
 CONFIG_FILE = Path(__file__).parent / "config" / "settings.json"
@@ -442,37 +476,6 @@ def save_config(cfg):
         json.dump(cfg, f, indent=2, ensure_ascii=False)
 
 config = load_config()
-
-# ─── Kiểm tra đăng nhập ─────────────────────────────────────────
-from pages.login import is_logged_in, render_login
-if not is_logged_in():
-    render_login()
-    st.stop()
-
-# ─── Force mở sidebar sau khi vừa đăng nhập ────────────────────
-if st.session_state.get("just_logged_in"):
-    st.markdown("""
-    <script>
-    (function() {
-        // Xóa flag và force click nút mở sidebar nếu đang đóng
-        window.localStorage.removeItem('sidebar_force_open');
-        var attempts = 0;
-        var tryOpen = setInterval(function() {
-            attempts++;
-            var btn = window.parent.document.querySelector('[data-testid="collapsedControl"]');
-            if (btn) {
-                // Chỉ click nếu sidebar đang đóng (aria-expanded = false)
-                var expanded = btn.getAttribute('aria-expanded');
-                if (expanded === 'false' || expanded === null) {
-                    btn.click();
-                }
-                clearInterval(tryOpen);
-            }
-            if (attempts > 20) clearInterval(tryOpen);
-        }, 150);
-    })();
-    </script>
-    """, unsafe_allow_html=True)
 
 # ─── Sidebar ────────────────────────────────────────────────────
 with st.sidebar:

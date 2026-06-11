@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 CONFIG_FILE = Path(__file__).parent.parent / "config" / "settings.json"
 
-DEFAULT_PASSWORD = "soc2026"  # Mật khẩu mặc định lần đầu
+DEFAULT_PASSWORD = "soc2026"
 
 
 def hash_password(password: str) -> str:
@@ -48,17 +48,18 @@ def is_logged_in() -> bool:
 
 def logout():
     st.session_state.authenticated = False
-    st.session_state.last_active   = None
+    st.session_state.last_active = None
     st.rerun()
 
 
 def render_login():
-    """Hiển thị màn hình đăng nhập."""
-    # Ẩn sidebar bằng CSS khi ở trang login
+    """
+    Hiển thị màn hình đăng nhập.
+    Lưu ý: CSS ẩn sidebar đã được xử lý trong app.py (load_css(logged_in=False))
+    Hàm này CHỈ render form login, không cần inject CSS sidebar nữa.
+    """
     st.markdown("""
     <style>
-    [data-testid="stSidebar"] { display: none !important; }
-    [data-testid="collapsedControl"] { display: none !important; }
     .block-container { max-width: 100% !important; padding: 2rem !important; }
     .login-container {
         max-width: 400px;
@@ -111,12 +112,6 @@ def render_login():
                 st.session_state.last_active    = datetime.now()
                 st.session_state.just_logged_in = True
                 st.session_state.dash_ready     = False
-                # Inject JS để force mở sidebar sau khi rerun
-                st.markdown("""
-                <script>
-                window.localStorage.setItem('sidebar_force_open', '1');
-                </script>
-                """, unsafe_allow_html=True)
                 st.rerun()
             else:
                 st.markdown(
