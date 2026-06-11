@@ -13,7 +13,7 @@ st.set_page_config(
     page_title="SOC Alert Automation - HUE",
     page_icon="🔴",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="auto"
 )
 
 # Load custom CSS
@@ -365,16 +365,17 @@ def load_css():
         color: var(--red);
     }
 
-    /* Hide Streamlit branding */
-    #MainMenu, footer { visibility: hidden; }
-    header { visibility: hidden; }
-    header [data-testid="collapsedControl"] { visibility: visible !important; }
-    .stDeployButton { display: none; }
+    /* Hide Streamlit branding - CHỈ ẩn branding, KHÔNG ẩn header/toolbar */
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
+    .stDeployButton { display: none !important; }
+    [data-testid="stToolbar"] { display: none !important; }
 
-    /* Hiện nút mở/đóng sidebar */
+    /* Luôn hiện nút mở/đóng sidebar */
     [data-testid="collapsedControl"] {
-        display: block !important;
+        display: flex !important;
         visibility: visible !important;
+        opacity: 1 !important;
     }
 
     /* Config form */
@@ -447,6 +448,31 @@ from pages.login import is_logged_in, render_login
 if not is_logged_in():
     render_login()
     st.stop()
+
+# ─── Force mở sidebar sau khi vừa đăng nhập ────────────────────
+if st.session_state.get("just_logged_in"):
+    st.markdown("""
+    <script>
+    (function() {
+        // Xóa flag và force click nút mở sidebar nếu đang đóng
+        window.localStorage.removeItem('sidebar_force_open');
+        var attempts = 0;
+        var tryOpen = setInterval(function() {
+            attempts++;
+            var btn = window.parent.document.querySelector('[data-testid="collapsedControl"]');
+            if (btn) {
+                // Chỉ click nếu sidebar đang đóng (aria-expanded = false)
+                var expanded = btn.getAttribute('aria-expanded');
+                if (expanded === 'false' || expanded === null) {
+                    btn.click();
+                }
+                clearInterval(tryOpen);
+            }
+            if (attempts > 20) clearInterval(tryOpen);
+        }, 150);
+    })();
+    </script>
+    """, unsafe_allow_html=True)
 
 # ─── Sidebar ────────────────────────────────────────────────────
 with st.sidebar:

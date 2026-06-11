@@ -29,7 +29,6 @@ def check_password(input_password: str) -> bool:
     auth = load_auth_config()
     stored_hash = auth.get("password_hash", "")
     if not stored_hash:
-        # Chưa cài mật khẩu → dùng mật khẩu mặc định
         return input_password == DEFAULT_PASSWORD
     return hash_password(input_password) == stored_hash
 
@@ -37,14 +36,12 @@ def check_password(input_password: str) -> bool:
 def is_logged_in() -> bool:
     if not st.session_state.get("authenticated"):
         return False
-    # Kiểm tra timeout (8 giờ)
     last_active = st.session_state.get("last_active")
     if last_active:
         elapsed = datetime.now() - last_active
         if elapsed > timedelta(hours=8):
             st.session_state.authenticated = False
             return False
-    # Cập nhật thời gian hoạt động
     st.session_state.last_active = datetime.now()
     return True
 
@@ -57,15 +54,12 @@ def logout():
 
 def render_login():
     """Hiển thị màn hình đăng nhập."""
+    # Ẩn sidebar bằng CSS khi ở trang login
     st.markdown("""
     <style>
-    /* Ẩn sidebar hoàn toàn chỉ ở trang login */
-    [data-testid="stSidebar"] {
-        display: none !important;
-    }
-    [data-testid="collapsedControl"] {
-        display: none !important;
-    }
+    [data-testid="stSidebar"] { display: none !important; }
+    [data-testid="collapsedControl"] { display: none !important; }
+    .block-container { max-width: 100% !important; padding: 2rem !important; }
     .login-container {
         max-width: 400px;
         margin: 80px auto 0;
@@ -74,10 +68,7 @@ def render_login():
         border: 1px solid var(--border);
         border-radius: 6px;
     }
-    .login-logo {
-        text-align: center;
-        margin-bottom: 32px;
-    }
+    .login-logo { text-align: center; margin-bottom: 32px; }
     .login-logo .badge {
         display: inline-block;
         background: var(--red);
@@ -91,17 +82,8 @@ def render_login():
         margin-bottom: 12px;
         animation: pulse-badge 2s infinite;
     }
-    .login-logo h2 {
-        font-size: 1.4rem;
-        font-weight: 700;
-        color: var(--text);
-        margin: 0 0 4px;
-    }
-    .login-logo .sub {
-        font-family: var(--mono);
-        font-size: 11px;
-        color: var(--text-muted);
-    }
+    .login-logo h2 { font-size: 1.4rem; font-weight: 700; color: var(--text); margin: 0 0 4px; }
+    .login-logo .sub { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
     </style>
 
     <div class="login-container">
@@ -113,7 +95,6 @@ def render_login():
     </div>
     """, unsafe_allow_html=True)
 
-    # Dùng cột để căn giữa form
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
@@ -128,8 +109,14 @@ def render_login():
             if check_password(password):
                 st.session_state.authenticated  = True
                 st.session_state.last_active    = datetime.now()
-                st.session_state.just_logged_in = True   # Flag: vừa đăng nhập
-                st.session_state.dash_ready     = False  # Dashboard chưa sẵn sàng
+                st.session_state.just_logged_in = True
+                st.session_state.dash_ready     = False
+                # Inject JS để force mở sidebar sau khi rerun
+                st.markdown("""
+                <script>
+                window.localStorage.setItem('sidebar_force_open', '1');
+                </script>
+                """, unsafe_allow_html=True)
                 st.rerun()
             else:
                 st.markdown(
