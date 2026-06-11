@@ -32,6 +32,7 @@ def save_state(state):
     STATE_FILE.parent.mkdir(exist_ok=True)
     with open(STATE_FILE, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
+    _backup_state()
 
 def render(config: dict):
     st.markdown("""

@@ -158,14 +158,12 @@ def render(config: dict):
             st.rerun()
 
         st.markdown("<br>", unsafe_allow_html=True)
-        with st.expander("📖 Hướng dẫn chạy nền (Background)"):
+        with st.expander("📖 Hướng dẫn khởi động hệ thống"):
             st.markdown("""
-            <div style="font-size:12px; line-height:1.8; color:var(--text-muted);">
-            Để lịch trình chạy liên tục (24/7), chạy script scheduler riêng biệt:
+            <div style="font-size:13px; line-height:2.2; color:#E8E8EC;">
+                1. Mở <strong>File Explorer</strong> (phím <code style="background:#2A2A30; padding:2px 6px; border-radius:3px;">Windows + E</code>)<br>
+                2. Vào thư mục <code style="background:#2A2A30; padding:2px 6px; border-radius:3px;">E:\soc-hue\</code><br>
+                3. Bấm đúp chuột vào file <code style="background:#E53E3E; color:white; padding:2px 8px; border-radius:3px;">start_soc.bat</code><br>
+                <span style="color:#48BB78;">→ Hệ thống tự động mở 2 cửa sổ: <strong>App</strong> và <strong>Watchdog</strong>.</span>
             </div>
             """, unsafe_allow_html=True)
-            st.code("""# Terminal 1: Chạy Streamlit App
-streamlit run app.py --server.port 8501
-
-# Terminal 2: Chạy Background Scheduler
-python scheduler_runner.py""", language="bash")

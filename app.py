@@ -406,6 +406,10 @@ if "logs" not in st.session_state:
     st.session_state.logs = []
 if "last_email_data" not in st.session_state:
     st.session_state.last_email_data = None
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+if "last_active" not in st.session_state:
+    st.session_state.last_active = None
 
 # Config file path
 CONFIG_FILE = Path(__file__).parent / "config" / "settings.json"
@@ -413,7 +417,7 @@ CONFIG_FILE.parent.mkdir(exist_ok=True)
 
 def load_config():
     if CONFIG_FILE.exists():
-        with open(CONFIG_FILE) as f:
+        with open(CONFIG_FILE, encoding="utf-8") as f:
             return json.load(f)
     return {
         "email": {"address": "", "password": "", "imap_server": "imap.gmail.com", "smtp_server": "smtp.gmail.com"},
@@ -421,13 +425,20 @@ def load_config():
         "scheduler": {"scan_interval_minutes": 30, "reply_deadline_hour": 11, "reply_deadline_minute": 45},
         "soc_sender_name": "SOC Canh bao",
         "branch": "HUE",
+        "auth": {},
     }
 
 def save_config(cfg):
-    with open(CONFIG_FILE, "w") as f:
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
 
 config = load_config()
+
+# ─── Kiểm tra đăng nhập ─────────────────────────────────────────
+from pages.login import is_logged_in, render_login
+if not is_logged_in():
+    render_login()
+    st.stop()
 
 # ─── Sidebar ────────────────────────────────────────────────────
 with st.sidebar:
@@ -456,6 +467,9 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
+    if st.button("🚪 Đăng xuất", use_container_width=True):
+        from pages.login import logout
+        logout()
     st.markdown(f"""
     <div style="font-family: var(--mono); font-size: 10px; color: var(--text-muted); padding: 8px 0;">
         <div>BRANCH: {config.get('branch','HUE')}</div>

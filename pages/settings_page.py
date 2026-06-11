@@ -91,6 +91,7 @@ def render(config: dict, save_config):
             save_config(config)
             st.markdown('<div class="alert-box success">✅ Đã lưu cài đặt!</div>', unsafe_allow_html=True)
 
+        render_password_section(config, save_config)
     with tab4:
         st.markdown("<br>", unsafe_allow_html=True)
         email_cfg  = config.get("email", {})
@@ -134,3 +135,30 @@ def _has_streamlit_secrets() -> bool:
         return hasattr(st, "secrets") and "google_service_account" in st.secrets
     except Exception:
         return False
+
+
+def render_password_section(config: dict, save_config):
+    """Section đổi mật khẩu — gọi từ tab Hệ thống."""
+    import hashlib
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown('<div class="section-label">ĐỔI MẬT KHẨU ĐĂNG NHẬP</div>', unsafe_allow_html=True)
+
+    with st.expander("🔑 Đổi mật khẩu"):
+        current_pw = st.text_input("Mật khẩu hiện tại", type="password", key="current_pw")
+        new_pw     = st.text_input("Mật khẩu mới", type="password", key="new_pw")
+        confirm_pw = st.text_input("Xác nhận mật khẩu mới", type="password", key="confirm_pw")
+
+        if st.button("💾 Lưu mật khẩu mới", type="primary"):
+            from pages.login import check_password, hash_password, DEFAULT_PASSWORD
+            if not check_password(current_pw):
+                st.markdown('<div class="alert-box error">❌ Mật khẩu hiện tại không đúng.</div>', unsafe_allow_html=True)
+            elif len(new_pw) < 6:
+                st.markdown('<div class="alert-box warning">⚠️ Mật khẩu mới phải có ít nhất 6 ký tự.</div>', unsafe_allow_html=True)
+            elif new_pw != confirm_pw:
+                st.markdown('<div class="alert-box warning">⚠️ Mật khẩu xác nhận không khớp.</div>', unsafe_allow_html=True)
+            else:
+                if "auth" not in config:
+                    config["auth"] = {}
+                config["auth"]["password_hash"] = hash_password(new_pw)
+                save_config(config)
+                st.markdown('<div class="alert-box success">✅ Đã đổi mật khẩu thành công!</div>', unsafe_allow_html=True)

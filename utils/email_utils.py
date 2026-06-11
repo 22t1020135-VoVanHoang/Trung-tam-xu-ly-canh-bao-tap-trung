@@ -1,6 +1,6 @@
 """
 Email utilities: IMAP reading + SMTP sending
-Fix: tự động lấy email SOC MỚI NHẤT theo ngày thực tế từ header
+Parse HTML email từ SOC để nhận diện chỉ số đỏ chính xác.
 """
 import imaplib
 import smtplib
@@ -11,8 +11,14 @@ from email.header import decode_header
 from email.utils import parsedate_to_datetime
 from datetime import datetime, date, timezone
 import re
-import html
+import html as html_module
 from typing import Optional
+
+try:
+    from bs4 import BeautifulSoup
+    BS4_AVAILABLE = True
+except ImportError:
+    BS4_AVAILABLE = False
 
 
 def decode_str(s):
@@ -35,15 +41,10 @@ def connect_imap(address: str, password: str, server: str = "imap.gmail.com") ->
 
 
 def parse_email_date(date_str: str) -> Optional[datetime]:
-    """
-    Parse email Date header thành datetime (aware, UTC).
-    Trả về None nếu không parse được.
-    """
     if not date_str:
         return None
     try:
         dt = parsedate_to_datetime(date_str)
-        # Đảm bảo có timezone
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         return dt
@@ -55,49 +56,42 @@ def search_soc_emails(
     mail: imaplib.IMAP4_SSL,
     sender_name: str = "SOC Canh bao",
     limit: int = 10
-) -> list[dict]:
-    """
-    Tìm email từ SOC, sắp xếp theo ngày IMAP header (mới nhất trước).
-    Trả về list dict, phần tử [0] luôn là email MỚI NHẤT.
-    """
+) -> list:
     mail.select("INBOX")
     _, data = mail.search(None, f'(FROM "{sender_name}")')
     email_ids = data[0].split()
     if not email_ids:
         return []
 
-    # Lấy nhiều hơn limit để sau khi sort vẫn còn đủ
     fetch_ids = email_ids[-(limit * 2):]
-
     raw_emails = []
+
     for eid in fetch_ids:
         _, msg_data = mail.fetch(eid, "(RFC822)")
         raw = msg_data[0][1]
         msg = email.message_from_bytes(raw)
 
-        date_str = msg.get("Date", "")
+        date_str  = msg.get("Date", "")
         parsed_dt = parse_email_date(date_str)
-
-        subject = decode_str(msg.get("Subject", ""))
-        sender  = decode_str(msg.get("From", ""))
-        body    = extract_body(msg)
+        subject   = decode_str(msg.get("Subject", ""))
+        sender    = decode_str(msg.get("From", ""))
+        body_plain, body_html = extract_body_both(msg)
 
         raw_emails.append({
             "id":         eid.decode(),
             "subject":    subject,
             "sender":     sender,
             "date":       date_str,
-            "parsed_dt":  parsed_dt,   # datetime object để sort
-            "body":       body,
+            "parsed_dt":  parsed_dt,
+            "body":       body_plain,   # plain text để hiển thị
+            "body_html":  body_html,    # HTML gốc để parse chỉ số đỏ
             "raw":        msg,
         })
 
-    # Sắp xếp: mới nhất trước (None date xuống cuối)
     raw_emails.sort(
         key=lambda e: e["parsed_dt"] or datetime.min.replace(tzinfo=timezone.utc),
         reverse=True
     )
-
     return raw_emails[:limit]
 
 
@@ -105,88 +99,244 @@ def get_latest_soc_email(
     mail: imaplib.IMAP4_SSL,
     sender_name: str = "SOC Canh bao"
 ) -> Optional[dict]:
-    """
-    Trả về DUY NHẤT 1 email SOC mới nhất.
-    Dùng cho scheduler và auto-reply.
-    """
     emails = search_soc_emails(mail, sender_name, limit=1)
     return emails[0] if emails else None
 
 
-def extract_body(msg) -> str:
-    body = ""
+def extract_body_both(msg) -> tuple:
+    """Trả về (plain_text, html_content)."""
+    plain = ""
+    html_content = ""
+
     if msg.is_multipart():
         for part in msg.walk():
             ctype = part.get_content_type()
-            if ctype == "text/plain":
+            if ctype == "text/plain" and not plain:
                 payload = part.get_payload(decode=True)
                 charset = part.get_content_charset() or "utf-8"
-                body = payload.decode(charset, errors="replace")
-                break
-            elif ctype == "text/html" and not body:
+                plain = payload.decode(charset, errors="replace")
+            elif ctype == "text/html" and not html_content:
                 payload = part.get_payload(decode=True)
                 charset = part.get_content_charset() or "utf-8"
-                body = html.unescape(
-                    re.sub(r"<[^>]+>", " ",
-                           payload.decode(charset, errors="replace"))
-                )
+                html_content = payload.decode(charset, errors="replace")
     else:
         payload = msg.get_payload(decode=True)
         charset = msg.get_content_charset() or "utf-8"
-        body = payload.decode(charset, errors="replace")
-    return body
+        content = payload.decode(charset, errors="replace")
+        if "<html" in content.lower():
+            html_content = content
+        else:
+            plain = content
+
+    # Nếu không có plain text thì strip HTML
+    if not plain and html_content:
+        plain = html_module.unescape(re.sub(r"<[^>]+>", " ", html_content))
+
+    return plain, html_content
 
 
-# ─── KPI indicators ───────────────────────────────────────────────
+def extract_body(msg) -> str:
+    plain, _ = extract_body_both(msg)
+    return plain
+
+
+# ── KPI indicators mapping ─────────────────────────────────────────────────
+# Tên hiển thị → các từ khóa tìm trong email
 KPI_INDICATORS = {
-    "CSAT 1":              ["CSAT 1", "csat1", "csat 1"],
-    "Checklist lặp ≥ 3":  ["Checklist lặp", "checklist lap", "CLL"],
-    "PTC ≥ 72h":           ["PTC", "ptc"],
-    "Checklist ≥24h":      ["Checklist 24h", "checklist 24"],
-    "Yêu Cầu RM":          ["Yêu Cầu RM", "yc rm", "YCRM"],
-    "Yêu cầu khiếu nại":   ["khiếu nại", "khieu nai"],
-    "Yêu cầu ≥48h":        ["yêu cầu 48h", "yc 48h"],
+    "CSAT 1":              ["CSAT 1", "CSAT1"],
+    "Checklist lặp ≥ 3":  ["Checklist lặp", "CLL3", "Checklist lặp ≥ 3"],
+    "PTC ≥ 72h":           ["PTC ≥ 72h", "PTC >= 72h", "PTC≥72h"],
+    "Checklist ≥24h":      ["Checklist ≥24h", "Checklist>=24h", "Checklist ≥ 24h"],
+    "Yêu Cầu RM":          ["Yêu cầu RM", "YC RM", "YCRM"],
+    "Yêu cầu khiếu nại":   ["Yêu cầu Khiếu nại", "khiếu nại", "khieu nai"],
+    "Yêu cầu ≥48h":        ["Yêu cầu ≥48h", "yêu cầu 48h", "YC 48h"],
 }
 
 
-def parse_soc_email(body: str, email_date: str = "") -> dict:
+def parse_soc_email_html(html_content: str, email_date: str = "") -> dict:
     """
-    Parse SOC alert email:
-    - report_date: ưu tiên lấy từ email_date header (chính xác nhất)
-    - Fallback: tìm trong body
-    - red_indicators: nhận diện chỉ số đỏ
+    Parse HTML email SOC dùng BeautifulSoup.
+    Tìm chỉ số đỏ từ phần bullet list color:red đầu email (nguồn chính xác nhất).
     """
     result = {
         "report_date":     None,
-        "report_date_obj": None,   # datetime object cho việc so sánh
+        "report_date_obj": None,
         "deadline":        None,
         "red_indicators":  [],
-        "table_rows":      [],
-        "raw_body":        body,
-        "email_received":  email_date,  # lưu lại header gốc
+        "raw_body":        "",
+        "email_received":  email_date,
     }
 
-    # ── 1. Lấy report_date từ email Date header (ưu tiên cao nhất) ──
     if email_date:
         dt = parse_email_date(email_date)
         if dt:
             result["report_date_obj"] = dt
-            # Format thành dd/mm/yyyy cho hiển thị
-            result["report_date"] = dt.strftime("%d/%m/%Y")
+            result["report_date"]     = dt.strftime("%d/%m/%Y")
 
-    # ── 2. Fallback: tìm ngày trong body ──
+    if not html_content:
+        return result
+
+    soup = BeautifulSoup(html_content, "html.parser")
+    result["raw_body"] = soup.get_text(separator="\n")
+
+    # ── 1. Tìm deadline từ text ──
+    full_text = result["raw_body"]
+    deadline_m = re.search(
+        r"trước\s+12h\s+ngày\s+(\d{1,2}/\d{1,2}(?:/\d{4})?)",
+        full_text, re.IGNORECASE
+    )
+    if deadline_m:
+        result["deadline"] = f"12h ngày {deadline_m.group(1)}"
+
+    # ── 2. Fallback report_date từ body ──
     if not result["report_date"]:
-        date_patterns = [
-            r"(\d{2}/\d{2}/\d{4})",
-            r"ngày\s+(\d{1,2}/\d{1,2}(?:/\d{4})?)",
-        ]
-        for pat in date_patterns:
-            m = re.search(pat, body, re.IGNORECASE)
-            if m:
-                result["report_date"] = m.group(1) if m.lastindex else m.group(0)
-                break
+        date_m = re.search(r"(\d{2}/\d{2}/\d{4})", full_text)
+        if date_m:
+            result["report_date"] = date_m.group(1)
 
-    # ── 3. Deadline ──
+    # ── 3. CHIẾN LƯỢC CHÍNH: Tìm span/p có color:red trong phần bullet ──
+    # SOC liệt kê chỉ số đỏ dưới dạng:
+    # <span style='color:red'>• CSAT 1</span>
+    # <span style='color:red'>• PTC ≥ 72h</span>
+    red_from_bullets = _extract_red_bullets(soup)
+    if red_from_bullets:
+        result["red_indicators"] = red_from_bullets
+        return result
+
+    # ── 4. FALLBACK: tìm trong bảng nếu bullet không có ──
+    red_from_table = _extract_red_from_table(soup)
+    result["red_indicators"] = red_from_table
+
+    return result
+
+
+def _extract_red_bullets(soup) -> list:
+    """
+    Tìm các chỉ số đỏ từ phần bullet list đầu email.
+    SOC dùng: <span style='...color:red'>• Tên chỉ số</span>
+    """
+    red_indicators = []
+    RED_COLORS = {"red", "#ff0000", "#e53e3e", "#c62828", "#c00000", "rgb(255,0,0)"}
+
+    # Tìm tất cả element có style color:red
+    for tag in soup.find_all(style=True):
+        style = tag.get("style", "").lower()
+        # Kiểm tra có phải màu đỏ không
+        is_red = False
+        if "color:red" in style.replace(" ", "") or "color: red" in style:
+            is_red = True
+        else:
+            # Kiểm tra hex đỏ
+            color_m = re.search(r'color\s*:\s*([^;]+)', style)
+            if color_m:
+                color_val = color_m.group(1).strip().lower().replace(" ", "")
+                if color_val in RED_COLORS:
+                    is_red = True
+
+        if not is_red:
+            continue
+
+        text = tag.get_text(strip=True)
+        # Bỏ bullet point và khoảng trắng
+        text = text.replace("•", "").replace("·", "").strip()
+        if not text:
+            continue
+
+        # Match với KPI indicators
+        matched = _match_indicator(text)
+        if matched and matched not in red_indicators:
+            red_indicators.append(matched)
+
+    return red_indicators
+
+
+def _extract_red_from_table(soup) -> list:
+    """
+    Fallback: tìm chỉ số đỏ từ bảng KPI.
+    Tìm tên chỉ số trong cột 2 của hàng mà cột 4 (giá trị) có màu đỏ/cam và > 0.
+    """
+    red_indicators = []
+    RED_ORANGE = {"red", "orange", "#ff0000", "#e53e3e", "#c62828", "#ffa500", "#dd6b20"}
+
+    for table in soup.find_all("table"):
+        rows = table.find_all("tr")
+        for row in rows:
+            cells = row.find_all("td")
+            if len(cells) < 2:
+                continue
+
+            # Kiểm tra xem có ô nào màu đỏ/cam không
+            has_red_cell = False
+            for cell in cells:
+                for tag in cell.find_all(style=True):
+                    style = tag.get("style", "").lower()
+                    color_m = re.search(r'color\s*:\s*([^;]+)', style)
+                    if color_m:
+                        cv = color_m.group(1).strip().lower().replace(" ", "")
+                        if cv in RED_ORANGE:
+                            # Kiểm tra giá trị > 0
+                            val_text = tag.get_text(strip=True)
+                            nums = re.findall(r'\d+', val_text)
+                            if nums and any(int(n) > 0 for n in nums):
+                                has_red_cell = True
+                                break
+                if has_red_cell:
+                    break
+
+            if not has_red_cell:
+                continue
+
+            # Lấy tên chỉ số từ cột 2 (index 1)
+            indicator_text = cells[1].get_text(strip=True) if len(cells) > 1 else ""
+            matched = _match_indicator(indicator_text)
+            if matched and matched not in red_indicators:
+                red_indicators.append(matched)
+
+    return red_indicators
+
+
+def _match_indicator(text: str) -> Optional[str]:
+    """Match text với danh sách KPI indicators."""
+    text_lower = text.lower()
+    for indicator, keywords in KPI_INDICATORS.items():
+        for kw in keywords:
+            if kw.lower() in text_lower:
+                return indicator
+    return None
+
+
+def parse_soc_email(body: str, email_date: str = "", body_html: str = "") -> dict:
+    """
+    Hàm parse chính — dùng HTML nếu có, fallback về plain text.
+    Tương thích ngược với code cũ.
+    """
+    # Ưu tiên parse HTML
+    if body_html and BS4_AVAILABLE:
+        result = parse_soc_email_html(body_html, email_date)
+        if result["red_indicators"]:
+            return result
+
+    # Fallback: parse plain text (logic cũ)
+    result = {
+        "report_date":     None,
+        "report_date_obj": None,
+        "deadline":        None,
+        "red_indicators":  [],
+        "raw_body":        body,
+        "email_received":  email_date,
+    }
+
+    if email_date:
+        dt = parse_email_date(email_date)
+        if dt:
+            result["report_date_obj"] = dt
+            result["report_date"]     = dt.strftime("%d/%m/%Y")
+
+    if not result["report_date"]:
+        m = re.search(r"(\d{2}/\d{2}/\d{4})", body)
+        if m:
+            result["report_date"] = m.group(1)
+
     deadline_m = re.search(
         r"trước\s+(\d{1,2}h\d{0,2})\s+ngày\s+(\d{1,2}/\d{1,2})",
         body, re.IGNORECASE
@@ -194,7 +344,6 @@ def parse_soc_email(body: str, email_date: str = "") -> dict:
     if deadline_m:
         result["deadline"] = f"{deadline_m.group(1)} ngày {deadline_m.group(2)}"
 
-    # ── 4. Nhận diện chỉ số đỏ ──
     lines = body.split("\n")
     for line in lines:
         line_clean = line.strip()
@@ -203,8 +352,8 @@ def parse_soc_email(body: str, email_date: str = "") -> dict:
         for indicator, keywords in KPI_INDICATORS.items():
             for kw in keywords:
                 if kw.lower() in line_clean.lower():
-                    numbers = re.findall(r"\d+", line_clean)
-                    if numbers and any(int(n) > 0 for n in numbers):
+                    nums = re.findall(r"\d+", line_clean)
+                    if nums and any(int(n) > 0 for n in nums):
                         if indicator not in result["red_indicators"]:
                             result["red_indicators"].append(indicator)
                     break
@@ -255,7 +404,7 @@ def send_reply_email(
     return True
 
 
-def test_imap_connection(address: str, password: str, server: str) -> tuple[bool, str]:
+def test_imap_connection(address: str, password: str, server: str) -> tuple:
     try:
         mail = connect_imap(address, password, server)
         mail.logout()
@@ -264,7 +413,7 @@ def test_imap_connection(address: str, password: str, server: str) -> tuple[bool
         return False, f"Lỗi IMAP: {str(e)}"
 
 
-def test_smtp_connection(address: str, password: str, server: str) -> tuple[bool, str]:
+def test_smtp_connection(address: str, password: str, server: str) -> tuple:
     try:
         with smtplib.SMTP_SSL(server, 465) as s:
             s.login(address, password)
