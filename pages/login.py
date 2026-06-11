@@ -59,6 +59,13 @@ def render_login():
     """Hiển thị màn hình đăng nhập."""
     st.markdown("""
     <style>
+    /* Ẩn sidebar hoàn toàn chỉ ở trang login */
+    [data-testid="stSidebar"] {
+        display: none !important;
+    }
+    [data-testid="collapsedControl"] {
+        display: none !important;
+    }
     .login-container {
         max-width: 400px;
         margin: 80px auto 0;

@@ -366,7 +366,9 @@ def load_css():
     }
 
     /* Hide Streamlit branding */
-    #MainMenu, footer, header { visibility: hidden; }
+    #MainMenu, footer { visibility: hidden; }
+    header { visibility: hidden; }
+    header [data-testid="collapsedControl"] { visibility: visible !important; }
     .stDeployButton { display: none; }
 
     /* Hiện nút mở/đóng sidebar */
