@@ -2,7 +2,6 @@
 import streamlit as st
 from datetime import datetime
 import json
-import time
 from pathlib import Path
 
 STATE_FILE = Path(__file__).parent.parent / "config" / "state.json"
@@ -169,38 +168,31 @@ def render(config: dict):
             st.session_state.page = "settings"
             st.rerun()
 
-    # ── Auto-refresh: 3 bước ──────────────────────────────────────
-    # Bước 1: Vừa đăng nhập → đánh dấu dashboard đã load xong, KHÔNG refresh
+    # ── Auto-refresh: dùng JavaScript, không block UI ──────────────
+    # Reset timer khi vừa đăng nhập, không refresh ngay
     if st.session_state.get("just_logged_in"):
         st.session_state.just_logged_in = False
-        st.session_state.dash_ready     = True
-        st.session_state.dash_last_refresh = time.time()
-        return  # Trang đã render xong, dừng tại đây
-
-    # Bước 2 & 3: Chỉ chạy auto-refresh sau khi dashboard đã sẵn sàng
-    if not st.session_state.get("dash_ready"):
-        st.session_state.dash_ready = True
-        st.session_state.dash_last_refresh = time.time()
-        return
-
-    col_r, col_t = st.columns([4, 1])
-    with col_t:
-        auto_refresh = st.toggle("🔄 Tự động cập nhật", value=False, key="dash_auto_refresh")
-    if auto_refresh:
-        REFRESH_INTERVAL = 60
-        if "dash_last_refresh" not in st.session_state:
-            st.session_state.dash_last_refresh = time.time()
-        elapsed   = time.time() - st.session_state.dash_last_refresh
-        remaining = max(0, int(REFRESH_INTERVAL - elapsed))
-        with col_r:
-            st.markdown(
-                f'<div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);padding:8px 0;">' +
-                f'🔄 Cập nhật sau <strong>{remaining}s</strong></div>',
-                unsafe_allow_html=True
-            )
-        if elapsed >= REFRESH_INTERVAL:
-            st.session_state.dash_last_refresh = time.time()
-            st.rerun()
-        else:
-            time.sleep(1)
-            st.rerun()
+    else:
+        col_r, col_t = st.columns([4, 1])
+        with col_t:
+            auto_refresh = st.toggle("🔄 Tự động cập nhật", value=False, key="dash_auto_refresh")
+        if auto_refresh:
+            with col_r:
+                st.markdown(
+                    '<div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);padding:8px 0;">' +
+                    '🔄 Tự động cập nhật mỗi 60 giây</div>',
+                    unsafe_allow_html=True
+                )
+            # Dùng JavaScript để reload sau 60s — không block UI, không ảnh hưởng sidebar
+            st.markdown("""
+            <script>
+            (function() {
+                if (!window._socRefreshSet) {
+                    window._socRefreshSet = true;
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 60000);
+                }
+            })();
+            </script>
+            """, unsafe_allow_html=True)
