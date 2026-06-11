@@ -369,6 +369,12 @@ def load_css():
     #MainMenu, footer, header { visibility: hidden; }
     .stDeployButton { display: none; }
 
+    /* Hiện nút mở/đóng sidebar */
+    [data-testid="collapsedControl"] {
+        display: block !important;
+        visibility: visible !important;
+    }
+
     /* Config form */
     .config-section {
         background: var(--surface);
