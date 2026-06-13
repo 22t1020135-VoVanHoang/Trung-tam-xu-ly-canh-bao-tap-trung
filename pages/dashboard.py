@@ -177,21 +177,33 @@ def render(config: dict):
             st.rerun()
 
     # ── Auto-refresh ──────────────────────────────────────────────────────────
-    # Bỏ qua lần đầu sau đăng nhập để tránh refresh ngay lập tức
     if st.session_state.pop("just_logged_in", False):
         return
 
-    col_label, col_toggle = st.columns([4, 1])
+    st.markdown("<hr style='border:none; border-top:1px solid var(--border); margin:8px 0;'>", unsafe_allow_html=True)
+
+    col_status, col_toggle = st.columns([5, 1])
     with col_toggle:
-        auto_refresh = st.toggle("🔄 Tự động cập nhật", value=False, key="dash_auto_refresh")
+        auto_refresh = st.toggle("Tự động cập nhật", value=False, key="dash_auto_refresh")
+    with col_status:
+        if auto_refresh:
+            interval_s = REFRESH_INTERVAL_MS // 1000
+            st.markdown(
+                f'<div style="font-family:var(--mono); font-size:11px; '
+                f'color:#48BB78; padding:10px 0; display:flex; align-items:center; gap:6px;">'
+                f'<span style="width:6px;height:6px;border-radius:50%;background:#48BB78;'
+                f'display:inline-block;box-shadow:0 0 6px #48BB78;"></span>'
+                f'Đang tự động cập nhật · mỗi {interval_s} giây</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                '<div style="font-family:var(--mono); font-size:11px; '
+                'color:var(--text-muted); padding:10px 0;">'
+                'Bật toggle để tự động cập nhật dữ liệu</div>',
+                unsafe_allow_html=True,
+            )
 
     if auto_refresh:
         from streamlit_autorefresh import st_autorefresh
-        with col_label:
-            st.markdown(
-                '<div style="font-family:var(--mono); font-size:11px; '
-                'color:var(--text-muted); padding:8px 0;">'
-                f'🔄 Tự động cập nhật mỗi {REFRESH_INTERVAL_MS // 1000} giây</div>',
-                unsafe_allow_html=True,
-            )
         st_autorefresh(interval=REFRESH_INTERVAL_MS, key="dash_refresh_timer")

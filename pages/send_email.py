@@ -4,8 +4,9 @@ import json
 from pathlib import Path
 from datetime import datetime
 
-STATE_FILE = Path(__file__).parent.parent / "config" / "state.json"
-LOG_FILE   = Path(__file__).parent.parent / "config" / "logs.json"
+STATE_FILE   = Path(__file__).parent.parent / "config" / "state.json"
+LOG_FILE     = Path(__file__).parent.parent / "config" / "logs.json"
+HISTORY_FILE = Path(__file__).parent.parent / "config" / "history.json"
 
 DEFAULT_STATE = {
     "red_indicators": [], "report_date": None, "latest_email_sender": "",
@@ -154,6 +155,15 @@ def render(config: dict):
                         _append_log(LOG_FILE, "EMAIL_SENT",
                             f"Gửi đến {st.session_state.get('send_to','')} – {len(red_indicators)} chỉ số",
                             "success")
+                        # Lưu lịch sử chi tiết
+                        _append_history(
+                            report_date  = state.get("report_date", ""),
+                            branch       = config.get("branch", "HUE"),
+                            to_address   = st.session_state.get("send_to", ""),
+                            subject      = st.session_state.get("send_subject", ""),
+                            red_indicators = red_indicators,
+                            explanations   = explanations,
+                        )
                     except Exception as e:
                         st.markdown(f'<div class="alert-box error">❌ Gửi thất bại: {str(e)}</div>', unsafe_allow_html=True)
             else:
@@ -207,3 +217,47 @@ def _append_log(log_file: Path, action: str, detail: str, status: str):
     })
     with open(log_file, "w", encoding="utf-8") as f:
         json.dump(logs[:100], f, ensure_ascii=False, indent=2)
+
+def _append_history(
+    report_date:    str,
+    branch:         str,
+    to_address:     str,
+    subject:        str,
+    red_indicators: list,
+    explanations:   list,
+):
+    """Lưu chi tiết mỗi email đã gửi vào config/history.json."""
+    HISTORY_FILE.parent.mkdir(exist_ok=True)
+    history = []
+    if HISTORY_FILE.exists():
+        try:
+            content = HISTORY_FILE.read_text(encoding="utf-8").strip()
+            history = json.loads(content) if content else []
+        except Exception:
+            history = []
+
+    entry = {
+        "id":            datetime.now().strftime("%Y%m%d_%H%M%S"),
+        "sent_at":       datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+        "report_date":   report_date,
+        "branch":        branch,
+        "to_address":    to_address,
+        "subject":       subject,
+        "red_indicators": red_indicators,
+        "explanations": [
+            {
+                "indicator":  e.get("indicator", ""),
+                "sheet_name": e.get("sheet_name", ""),
+                "count":      e.get("count", 0),
+            }
+            for e in explanations
+        ],
+        "total_records": sum(e.get("count", 0) for e in explanations),
+        "status":        "success",
+    }
+
+    history.insert(0, entry)
+    HISTORY_FILE.write_text(
+        json.dumps(history[:500], ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )

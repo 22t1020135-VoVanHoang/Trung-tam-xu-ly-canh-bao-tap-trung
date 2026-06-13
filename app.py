@@ -5,6 +5,7 @@ Hệ thống tự động hóa cảnh báo SOC - Chi nhánh Huế
 import streamlit as st
 import json
 import os
+import base64
 from datetime import datetime
 from pathlib import Path
 
@@ -268,10 +269,12 @@ def load_css(logged_in: bool = False):
         color: white !important;
     }}
 
-    /* Input fields */
+    /* Input fields — dark theme toàn diện */
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea,
-    .stSelectbox > div > div > select {{
+    [data-baseweb="input"] input,
+    [data-baseweb="base-input"] input,
+    [data-baseweb="textarea"] textarea {{
         background: var(--surface2) !important;
         border: 1px solid var(--border) !important;
         border-radius: 3px !important;
@@ -279,9 +282,44 @@ def load_css(logged_in: bool = False):
         font-family: var(--sans) !important;
     }}
     .stTextInput > div > div > input:focus,
-    .stTextArea > div > div > textarea:focus {{
+    .stTextArea > div > div > textarea:focus,
+    [data-baseweb="input"] input:focus {{
         border-color: var(--red) !important;
         box-shadow: 0 0 0 1px var(--red) !important;
+    }}
+    /* Selectbox, date input, number input */
+    [data-testid="stSelectbox"]   [data-baseweb="select"] > div,
+    [data-testid="stDateInput"]   [data-baseweb="input"]  > div,
+    [data-testid="stNumberInput"] [data-baseweb="input"]  > div,
+    [data-testid="stMultiSelect"] [data-baseweb="select"] > div {{
+        background: var(--surface2) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 3px !important;
+        color: var(--text) !important;
+    }}
+    [data-testid="stDateInput"] input,
+    [data-testid="stNumberInput"] input {{
+        color: var(--text) !important;
+        background: var(--surface2) !important;
+    }}
+    /* Dropdown popup menu */
+    [data-baseweb="popover"] ul,
+    [data-baseweb="menu"] {{
+        background: var(--surface2) !important;
+        border: 1px solid var(--border) !important;
+    }}
+    [data-baseweb="menu"] li {{
+        color: var(--text) !important;
+    }}
+    [data-baseweb="menu"] li:hover {{
+        background: var(--surface) !important;
+        color: var(--red) !important;
+    }}
+    /* Multiselect tags */
+    [data-testid="stMultiSelect"] [data-baseweb="tag"] {{
+        background: rgba(229,62,62,0.15) !important;
+        color: var(--red-light) !important;
+        border: 1px solid rgba(229,62,62,0.3) !important;
     }}
 
     /* Tabs */
@@ -405,19 +443,29 @@ def load_css(logged_in: bool = False):
         color: var(--red);
     }}
 
-    /* Ẩn Deploy button & toolbar */
+    /* Ẩn Deploy button, toolbar, header gap & Streamlit auto-nav */
     header[data-testid="stHeader"] {{
         background-color: var(--bg) !important;
         border-bottom: none !important;
+        height: 0 !important;
+        min-height: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
     }}
-    [data-testid="stToolbar"] {{ display: none !important; }}
+    /* Bù lại khoảng trống do header bị ẩn */
+    .main .block-container {{ padding-top: 1.5rem !important; }}
+    [data-testid="stToolbar"]    {{ display: none !important; }}
     [data-testid="stDecoration"] {{ display: none !important; }}
-    .stDeployButton {{ display: none !important; }}
-    /* Ẩn nút đóng sidebar – giữ điều hướng luôn hiển thị */
+    .stDeployButton              {{ display: none !important; }}
+    /* Ẩn Streamlit auto-detected page navigation */
+    [data-testid="stSidebarNav"],
+    [data-testid="stSidebarNavItems"],
+    [data-testid="stSidebarNavSeparator"] {{ display: none !important; }}
+    /* Ẩn nút đóng sidebar */
     [data-testid="stSidebarCollapseButton"] {{ display: none !important; }}
-    [data-testid="collapsedControl"] {{ display: none !important; }}
+    [data-testid="collapsedControl"]        {{ display: none !important; }}
     #MainMenu {{ visibility: hidden !important; }}
-    footer {{ visibility: hidden !important; }}
+    footer    {{ visibility: hidden !important; }}
 
     /* Config form */
     .config-section {{
@@ -475,26 +523,48 @@ def save_config(cfg):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
 
+def get_logo_b64() -> str:
+    """Đọc logo.png từ thư mục gốc, trả về chuỗi base64."""
+    for p in [
+        Path(__file__).parent / "logo.png",
+        Path(__file__).parent / "assets" / "logo.png",
+    ]:
+        if p.exists():
+            return base64.b64encode(p.read_bytes()).decode()
+    return ""
+
 config = load_config()
+_logo_b64 = get_logo_b64()
 
 # ─── Sidebar ────────────────────────────────────────────────────
 with st.sidebar:
+    # ── Logo FPT Telecom ──
+    if _logo_b64:
+        st.markdown(f"""
+        <div style="text-align:center; padding:16px 8px 12px;">
+            <img src="data:image/png;base64,{_logo_b64}"
+                 style="width:90px; border-radius:8px;
+                        box-shadow:0 2px 8px rgba(0,0,0,0.4);">
+        </div>
+        """, unsafe_allow_html=True)
+
     st.markdown("""
-    <div style="padding: 16px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px;">
+    <div style="padding: 8px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px; text-align:center;">
         <div style="font-family: var(--mono); font-size: 10px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;">SOC SYSTEM</div>
-        <div style="font-size: 1.1rem; font-weight: 700; color: var(--text); margin-top: 4px;">HUÊ AUTOMATION</div>
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--text); margin-top: 4px;">FPT Telecom AUTOMATION</div>
         <div style="font-family: var(--mono); font-size: 10px; color: var(--red); margin-top: 2px;">● ACTIVE</div>
     </div>
     """, unsafe_allow_html=True)
 
     pages = [
-        ("📊", "Dashboard", "dashboard"),
-        ("📧", "Quét Email", "email_scan"),
-        ("📋", "Google Sheets", "sheets"),
-        ("📤", "Gửi Email", "send_email"),
-        ("⏱️", "Lịch trình", "scheduler"),
-        ("⚙️", "Cấu hình", "settings"),
-        ("📜", "Nhật ký", "logs"),
+        ("📊", "Dashboard",      "dashboard"),
+        ("📧", "Quét Email",     "email_scan"),
+        ("📋", "Google Sheets",  "sheets"),
+        ("📤", "Gửi Email",      "send_email"),
+        ("📈", "Lịch sử BC",     "history"),
+        ("⏱️", "Lịch trình",     "scheduler"),
+        ("⚙️", "Cấu hình",       "settings"),
+        ("📜", "Nhật ký",        "logs"),
     ]
 
     for icon, label, key in pages:
@@ -516,7 +586,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # ─── Import pages ───────────────────────────────────────────────
-from pages import dashboard, email_scan, sheets_view, send_email, scheduler_page, settings_page, logs_page
+from pages import dashboard, email_scan, sheets_view, send_email, scheduler_page, settings_page, logs_page, history_page
 
 page = st.session_state.page
 
@@ -532,5 +602,7 @@ elif page == "scheduler":
     scheduler_page.render(config)
 elif page == "settings":
     settings_page.render(config, save_config)
+elif page == "history":
+    history_page.render(config)
 elif page == "logs":
     logs_page.render()

@@ -112,27 +112,22 @@ def render(config: dict):
             st.rerun()
 
         if auto_refresh:
+            from streamlit_autorefresh import st_autorefresh
             st.markdown("<br>", unsafe_allow_html=True)
-            if "sheets_next_refresh" not in st.session_state:
-                import time
-                st.session_state["sheets_next_refresh"] = time.time() + refresh_sec
-            import time
-            remaining = int(st.session_state["sheets_next_refresh"] - time.time())
-            if remaining <= 0:
-                st.session_state["sheets_next_refresh"] = time.time() + refresh_sec
+            st.markdown(
+                f'<div class="alert-box info" style="font-size:12px; text-align:center;">'
+                f'🔄 Tự động tải lại mỗi <strong>{refresh_sec}s</strong></div>',
+                unsafe_allow_html=True,
+            )
+            # st_autorefresh: không block UI, không tốn tài nguyên
+            refresh_count = st_autorefresh(interval=refresh_sec * 1000, key="sheets_autorefresh")
+            last_count = st.session_state.get("sheets_last_refresh_count", -1)
+            if refresh_count > last_count:
+                st.session_state["sheets_last_refresh_count"] = refresh_count
                 try:
                     _load_sheets_data(creds_path, spreadsheet_id, selected or red_indicators)
                 except Exception:
                     pass
-                st.rerun()
-            else:
-                st.markdown(
-                    f'<div class="alert-box info" style="font-size:12px; text-align:center;">'
-                    f'⏱️ Cập nhật sau <strong>{remaining}s</strong></div>',
-                    unsafe_allow_html=True,
-                )
-                time.sleep(1)
-                st.rerun()
 
     with col_main:
         st.markdown('<div class="section-label">NỘI DUNG GIẢI TRÌNH</div>', unsafe_allow_html=True)

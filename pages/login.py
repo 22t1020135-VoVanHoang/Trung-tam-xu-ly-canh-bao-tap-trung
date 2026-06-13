@@ -2,12 +2,23 @@
 import streamlit as st
 import hashlib
 import json
+import base64
 from pathlib import Path
 from datetime import datetime, timedelta
 
 CONFIG_FILE = Path(__file__).parent.parent / "config" / "settings.json"
 
 DEFAULT_PASSWORD = "soc2026"
+
+
+def _get_logo_b64() -> str:
+    for p in [
+        Path(__file__).parent.parent / "logo.png",
+        Path(__file__).parent.parent / "assets" / "logo.png",
+    ]:
+        if p.exists():
+            return base64.b64encode(p.read_bytes()).decode()
+    return ""
 
 
 def hash_password(password: str) -> str:
@@ -53,57 +64,61 @@ def logout():
 
 
 def render_login():
-    """
-    Hiển thị màn hình đăng nhập.
-    Lưu ý: CSS ẩn sidebar đã được xử lý trong app.py (load_css(logged_in=False))
-    Hàm này CHỈ render form login, không cần inject CSS sidebar nữa.
-    """
+    """Màn hình đăng nhập — thiết kế lại gọn, cân đối."""
     st.markdown("""
     <style>
-    .block-container { max-width: 100% !important; padding: 2rem !important; }
-    .login-container {
-        max-width: 400px;
-        margin: 80px auto 0;
-        padding: 40px;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 6px;
+    .block-container { max-width: 100% !important; padding: 0 !important; }
+    @keyframes pulse-badge {
+        0%, 100% { opacity: 1; }
+        50%       { opacity: 0.6; }
     }
-    .login-logo { text-align: center; margin-bottom: 32px; }
-    .login-logo .badge {
-        display: inline-block;
-        background: var(--red);
-        color: white;
-        font-family: var(--mono);
-        font-size: 10px;
-        padding: 4px 10px;
-        border-radius: 2px;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        margin-bottom: 12px;
-        animation: pulse-badge 2s infinite;
-    }
-    .login-logo h2 { font-size: 1.4rem; font-weight: 700; color: var(--text); margin: 0 0 4px; }
-    .login-logo .sub { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
     </style>
-
-    <div class="login-container">
-        <div class="login-logo">
-            <div class="badge">SOC SYSTEM</div>
-            <h2>HUÊ AUTOMATION</h2>
-            <div class="sub">Chi nhánh Huế · Xác thực để tiếp tục</div>
-        </div>
-    </div>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("<br>", unsafe_allow_html=True)
+    # Căn giữa theo chiều ngang
+    _, col, _ = st.columns([1, 1.1, 1])
+    with col:
+        st.markdown("<div style='height:48px'></div>", unsafe_allow_html=True)
+
+        # ── Logo ──
+        _b64 = _get_logo_b64()
+        if _b64:
+            st.markdown(
+                f'''<div style="text-align:center; margin-bottom:18px;">
+                <img src="data:image/png;base64,{_b64}"
+                     style="width:110px; border-radius:12px;
+                            box-shadow:0 4px 24px rgba(0,0,0,0.55);">
+                </div>''',
+                unsafe_allow_html=True,
+            )
+
+        # ── Card tiêu đề ──
+        st.markdown("""
+        <div style="background:var(--surface); border:1px solid var(--border);
+                    border-top:3px solid var(--red); border-radius:6px;
+                    padding:28px 32px 20px; text-align:center; margin-bottom:14px;">
+            <div style="display:inline-block; background:var(--red); color:white;
+                        font-family:var(--mono); font-size:10px; padding:3px 12px;
+                        border-radius:2px; letter-spacing:2px; text-transform:uppercase;
+                        margin-bottom:14px; animation:pulse-badge 2s infinite;">
+                SOC SYSTEM
+            </div>
+            <div style="font-size:1.25rem; font-weight:700; color:var(--text);
+                        letter-spacing:-0.3px; margin-bottom:6px;">
+                FPT Telecom AUTOMATION
+            </div>
+            <div style="font-family:var(--mono); font-size:11px; color:var(--text-muted);">
+                Chi nhánh Huế &nbsp;·&nbsp; Xác thực để tiếp tục
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # ── Form đăng nhập ──
         password = st.text_input(
-            "Mật khẩu",
+            "🔑 Mật khẩu",
             type="password",
             placeholder="Nhập mật khẩu...",
-            key="login_password"
+            key="login_password",
         )
 
         if st.button("🔐 Đăng nhập", type="primary", use_container_width=True):
@@ -115,6 +130,14 @@ def render_login():
                 st.rerun()
             else:
                 st.markdown(
-                    '<div class="alert-box error">❌ Mật khẩu không đúng.</div>',
-                    unsafe_allow_html=True
+                    '<div class="alert-box error" style="margin-top:8px;">' +
+                    '❌ Mật khẩu không đúng.</div>',
+                    unsafe_allow_html=True,
                 )
+
+        st.markdown("""
+        <div style="text-align:center; margin-top:20px;
+                    font-family:var(--mono); font-size:10px; color:var(--text-muted);">
+            FPT Telecom · Chi nhánh Huế · SOC Automation v1.0
+        </div>
+        """, unsafe_allow_html=True)
