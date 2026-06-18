@@ -141,15 +141,24 @@ def extract_body(msg) -> str:
 
 
 # ── KPI indicators mapping ─────────────────────────────────────────────────
-# Tên hiển thị → các từ khóa tìm trong email
+# Tên hiển thị → các từ khóa tìm trong email SOC
+# LƯU Ý: phải đồng bộ với INDICATOR_TO_SHEET trong sheets_utils.py
 KPI_INDICATORS = {
+    # ── 5 chỉ số cốt lõi — có tab Google Sheets tương ứng ───────────────────
     "CSAT 1":              ["CSAT 1", "CSAT1"],
     "Checklist lặp ≥ 3":  ["Checklist lặp", "CLL3", "Checklist lặp ≥ 3"],
     "PTC ≥ 72h":           ["PTC ≥ 72h", "PTC >= 72h", "PTC≥72h"],
     "Checklist ≥24h":      ["Checklist ≥24h", "Checklist>=24h", "Checklist ≥ 24h"],
     "Yêu Cầu RM":          ["Yêu cầu RM", "YC RM", "YCRM"],
-    "Yêu cầu khiếu nại":   ["Yêu cầu Khiếu nại", "khiếu nại", "khieu nai"],
-    "Yêu cầu ≥48h":        ["Yêu cầu ≥48h", "yêu cầu 48h", "YC 48h"],
+
+    # ── 2 chỉ số bổ sung — có tab Google Sheets, thêm vào để parser nhận diện
+    "Nguyên nhân tồn TKM": ["Nguyên nhân tồn TKM", "tồn TKM", "ton TKM"],
+    "Rời mạng CLDV":       ["Rời mạng CLDV", "rời mạng", "roi mang CLDV"],
+
+    # ── 2 chỉ số CHƯA CÓ tab trong Sheets → tạm comment
+    # Khi đã tạo tab trong Google Sheets thì bỏ comment 2 dòng dưới:
+    # "Yêu cầu khiếu nại":  ["Yêu cầu Khiếu nại", "khiếu nại", "khieu nai"],
+    # "Yêu cầu ≥48h":       ["Yêu cầu ≥48h", "yêu cầu 48h", "YC 48h"],
 }
 
 

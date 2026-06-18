@@ -1,0 +1,18 @@
+{
+  "last_scan": "15/06/2026 15:30",
+  "last_scan_date": "15/06/2026",
+  "last_email_sent": null,
+  "red_indicators": [
+    "CSAT 1",
+    "PTC ≥ 72h",
+    "Yêu Cầu RM"
+  ],
+  "report_date": "05/06/2026",
+  "deadline": "12h00 ngày 02/06",
+  "status": "active",
+  "total_scans": 5,
+  "total_emails_sent": 0,
+  "latest_email_sender": "Hoàng Võ Văn <22t1020135@husc.edu.vn>",
+  "latest_email_subject": "HUE - 01/06 4 chỉ số đỏ cần lưu ý",
+  "latest_email_date": "Fri, 5 Jun 2026 14:27:05 +0700"
+}

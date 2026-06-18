@@ -1,8 +1,9 @@
 """
 Google Sheets utilities
 """
-import json
 from pathlib import Path
+
+from utils.constants import DEFAULT_SPREADSHEET_ID
 
 try:
     import gspread
@@ -20,17 +21,24 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive.readonly",
 ]
 
-SPREADSHEET_ID = "11A4TuYjE3iLU92IvYK3UlOclB2baOd7Yawd4LyGrsW8"
-
 # Mapping chỉ số đỏ → tên tab CHÍNH XÁC trong Google Sheets
+# Phải đồng bộ với KPI_INDICATORS trong email_utils.py
+# Tab thực tế đã kiểm tra ngày 15/06/2026: 8 tabs
 INDICATOR_TO_SHEET = {
-    "CSAT 1":              "CSAT 1",
-    "Checklist lặp ≥ 3":  "Checklist lặp ≥ 3",
-    "PTC ≥ 72h":           "PTC ≥ 72h",
-    "Checklist ≥24h":      "Checklist ≥24h",
-    "Yêu Cầu RM":          "Suy hao cao yêu cầu huỷ",
-    "Nguyên nhân tồn TKM": "Nguyên nhân tồn TKM",
-    "Rời mạng CLDV":       "Rời mạng CLDV",
+    # ── 5 chỉ số cốt lõi ─────────────────────────────────────────────────────
+    "CSAT 1":               "CSAT 1",
+    "Checklist lặp ≥ 3":   "Checklist lặp ≥ 3",
+    "PTC ≥ 72h":            "PTC ≥ 72h",
+    "Checklist ≥24h":       "Checklist ≥24h",
+    "Yêu Cầu RM":           "Suy hao cao yêu cầu huỷ",
+
+    # ── 2 chỉ số bổ sung — đã có tab trong Sheets ────────────────────────────
+    "Nguyên nhân tồn TKM":  "Nguyên nhân tồn TKM",
+    "Rời mạng CLDV":        "Rời mạng CLDV",
+
+    # ── 2 chỉ số chưa có tab — bỏ comment khi đã tạo tab trong Sheets ────────
+    # "Yêu cầu khiếu nại":  "???",   # ← điền tên tab sau khi tạo
+    # "Yêu cầu ≥48h":       "???",   # ← điền tên tab sau khi tạo
 }
 
 

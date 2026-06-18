@@ -1,24 +1,19 @@
-"""Login page"""
+"""
+pages/login.py
+Trang đăng nhập — xác thực mật khẩu, quản lý phiên đăng nhập.
+
+Thay đổi so với bản cũ:
+  - Xóa CONFIG_FILE / DEFAULT_PASSWORD định nghĩa riêng → dùng utils.constants
+  - Xóa _get_logo_b64() duplicate với app.py → dùng utils.ui_helpers.get_logo_b64()
+  - Magic number "8 giờ" (timeout phiên) → SESSION_TIMEOUT_HOURS trong constants
+"""
 import streamlit as st
 import hashlib
 import json
-import base64
-from pathlib import Path
 from datetime import datetime, timedelta
 
-CONFIG_FILE = Path(__file__).parent.parent / "config" / "settings.json"
-
-DEFAULT_PASSWORD = "soc2026"
-
-
-def _get_logo_b64() -> str:
-    for p in [
-        Path(__file__).parent.parent / "logo.png",
-        Path(__file__).parent.parent / "assets" / "logo.png",
-    ]:
-        if p.exists():
-            return base64.b64encode(p.read_bytes()).decode()
-    return ""
+from utils.constants  import CONFIG_FILE, DEFAULT_PASSWORD, SESSION_TIMEOUT_HOURS
+from utils.ui_helpers import get_logo_b64
 
 
 def hash_password(password: str) -> str:
@@ -50,7 +45,7 @@ def is_logged_in() -> bool:
     last_active = st.session_state.get("last_active")
     if last_active:
         elapsed = datetime.now() - last_active
-        if elapsed > timedelta(hours=8):
+        if elapsed > timedelta(hours=SESSION_TIMEOUT_HOURS):
             st.session_state.authenticated = False
             return False
     st.session_state.last_active = datetime.now()
@@ -81,7 +76,7 @@ def render_login():
         st.markdown("<div style='height:48px'></div>", unsafe_allow_html=True)
 
         # ── Logo ──
-        _b64 = _get_logo_b64()
+        _b64 = get_logo_b64()
         if _b64:
             st.markdown(
                 f'''<div style="text-align:center; margin-bottom:18px;">

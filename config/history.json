@@ -1,0 +1,34 @@
+[
+  {
+    "id": "20260615_155236",
+    "sent_at": "15/06/2026 15:52:36",
+    "report_date": "05/06/2026",
+    "branch": "HUE",
+    "to_address": "Hoàng Võ Văn <22t1020135@husc.edu.vn>",
+    "subject": "Re: HUE - 01/06 4 chỉ số đỏ cần lưu ý – Giải trình 05/06/2026",
+    "red_indicators": [
+      "CSAT 1",
+      "PTC ≥ 72h",
+      "Yêu Cầu RM"
+    ],
+    "explanations": [
+      {
+        "indicator": "CSAT 1",
+        "sheet_name": "CSAT 1",
+        "count": 4
+      },
+      {
+        "indicator": "PTC ≥ 72h",
+        "sheet_name": "PTC ≥ 72h",
+        "count": 81
+      },
+      {
+        "indicator": "Yêu Cầu RM",
+        "sheet_name": "Suy hao cao yêu cầu huỷ",
+        "count": 9
+      }
+    ],
+    "total_records": 94,
+    "status": "success"
+  }
+]

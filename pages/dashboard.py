@@ -1,39 +1,24 @@
-"""Dashboard page"""
+"""
+pages/dashboard.py
+Trang Dashboard tổng quan — trạng thái hệ thống, luồng vận hành, chỉ số đỏ hiện tại.
+
+Thay đổi so với bản cũ:
+  - Xóa STATE_FILE / DEFAULT_STATE / load_state() duplicate → dùng utils.state_manager
+    (DEFAULT_STATE cũ thiếu keys như last_scan_date, latest_email_* → dữ liệu hiển thị
+     có thể không đồng bộ với các trang khác dùng bản DEFAULT_STATE đầy đủ hơn)
+  - Thay magic string "SOC Canh bao" → DEFAULT_SOC_SENDER
+  - Tách render() ~150 dòng → các hàm nhỏ theo Single Responsibility
+"""
 import streamlit as st
 from datetime import datetime
-import json
-from pathlib import Path
 
-STATE_FILE = Path(__file__).parent.parent / "config" / "state.json"
-
-DEFAULT_STATE = {
-    "last_scan":        None,
-    "last_email_sent":  None,
-    "red_indicators":   [],
-    "report_date":      None,
-    "deadline":         None,
-    "status":           "idle",
-    "total_scans":      0,
-    "total_emails_sent": 0,
-}
+from utils.constants     import DEFAULT_SOC_SENDER
+from utils.state_manager import load_state
 
 REFRESH_INTERVAL_MS = 60_000  # 60 giây
 
 
-def load_state() -> dict:
-    if STATE_FILE.exists():
-        try:
-            content = STATE_FILE.read_text(encoding="utf-8").strip()
-            return json.loads(content) if content else DEFAULT_STATE.copy()
-        except Exception:
-            try:
-                STATE_FILE.unlink()
-            except Exception:
-                pass
-    return DEFAULT_STATE.copy()
-
-
-def render(config: dict):
+def render(config: dict) -> None:
     state      = load_state()
     sched_cfg  = config.get("scheduler", {})
     deadline_h = sched_cfg.get("reply_deadline_hour", 11)
@@ -41,7 +26,31 @@ def render(config: dict):
     red_count  = len(state.get("red_indicators", []))
     cfg_ok     = bool(config.get("email", {}).get("address"))
 
-    # ── Header ────────────────────────────────────────────────────────────────
+    _render_header()
+    _render_status_bar(state, deadline_h, deadline_m, cfg_ok)
+    st.markdown("<br>", unsafe_allow_html=True)
+    _render_metric_cards(state, red_count)
+
+    col_a, col_b = st.columns([3, 2])
+    with col_a:
+        _render_workflow_steps(config, state, red_count, deadline_h, deadline_m)
+    with col_b:
+        _render_red_indicators_panel(state)
+        st.markdown("<br>", unsafe_allow_html=True)
+        _render_quick_actions()
+
+    # Bỏ qua phần auto-refresh ngay sau khi đăng nhập (tránh rerun-loop khó chịu)
+    if st.session_state.pop("just_logged_in", False):
+        return
+
+    _render_auto_refresh_section()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PRIVATE — UI components
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _render_header() -> None:
     st.markdown("""
     <div class="sys-header">
         <div>
@@ -52,7 +61,8 @@ def render(config: dict):
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Status bar ────────────────────────────────────────────────────────────
+
+def _render_status_bar(state: dict, deadline_h: int, deadline_m: int, cfg_ok: bool) -> None:
     col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
         st.markdown(f"""
@@ -81,9 +91,8 @@ def render(config: dict):
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── Metric cards ──────────────────────────────────────────────────────────
+def _render_metric_cards(state: dict, red_count: int) -> None:
     st.markdown(f"""
     <div class="metric-grid">
         <div class="metric-card red">
@@ -109,79 +118,82 @@ def render(config: dict):
     </div>
     """, unsafe_allow_html=True)
 
-    # ── Main content ──────────────────────────────────────────────────────────
-    col_a, col_b = st.columns([3, 2])
 
-    with col_a:
-        st.markdown('<div class="section-label">LUỒNG VẬN HÀNH</div>', unsafe_allow_html=True)
-        steps = [
-            ("01", "Tiếp nhận Email",
-             f"Quét email từ '{config.get('soc_sender_name', 'SOC Canh bao')}' qua IMAP",
-             "green" if state.get("last_scan") else "gray"),
-            ("02", "Bóc tách Chỉ số Đỏ",
-             f"{red_count} chỉ số đỏ được nhận diện từ bảng KPI",
-             "red" if red_count > 0 else "gray"),
-            ("03", "Nhân viên Giải trình",
-             "Cập nhật nội dung vào Google Sheets theo từng tab",
-             "orange" if red_count > 0 else "gray"),
-            ("04", "Tổng hợp & Phản hồi",
-             f"Tự động gửi reply trước deadline {deadline_h:02d}:{deadline_m:02d}",
-             "green" if state.get("last_email_sent") else "gray"),
-        ]
-        for num, title, desc, color in steps:
-            text_color = "red" if color == "red" else ("text-muted" if color == "gray" else color)
+def _render_workflow_steps(
+    config: dict, state: dict, red_count: int, deadline_h: int, deadline_m: int
+) -> None:
+    st.markdown('<div class="section-label">LUỒNG VẬN HÀNH</div>', unsafe_allow_html=True)
+
+    sender_name = config.get("soc_sender_name", DEFAULT_SOC_SENDER)
+    steps = [
+        ("01", "Tiếp nhận Email",
+         f"Quét email từ '{sender_name}' qua IMAP",
+         "green" if state.get("last_scan") else "gray"),
+        ("02", "Bóc tách Chỉ số Đỏ",
+         f"{red_count} chỉ số đỏ được nhận diện từ bảng KPI",
+         "red" if red_count > 0 else "gray"),
+        ("03", "Nhân viên Giải trình",
+         "Cập nhật nội dung vào Google Sheets theo từng tab",
+         "orange" if red_count > 0 else "gray"),
+        ("04", "Tổng hợp & Phản hồi",
+         f"Tự động gửi reply trước deadline {deadline_h:02d}:{deadline_m:02d}",
+         "green" if state.get("last_email_sent") else "gray"),
+    ]
+    for num, title, desc, color in steps:
+        text_color = "red" if color == "red" else ("text-muted" if color == "gray" else color)
+        st.markdown(f"""
+        <div class="status-row" style="gap:14px; align-items:flex-start;">
+            <div style="font-family:var(--mono); font-size:1.5rem; font-weight:700;
+                color:var(--{text_color}); min-width:32px; line-height:1;">{num}</div>
+            <div>
+                <div style="font-weight:600; font-size:13px; color:var(--text);">{title}</div>
+                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">{desc}</div>
+            </div>
+            <div class="dot {color}" style="margin-left:auto; margin-top:6px; flex-shrink:0;"></div>
+        </div>
+        """, unsafe_allow_html=True)
+
+
+def _render_red_indicators_panel(state: dict) -> None:
+    st.markdown('<div class="section-label">CHỈ SỐ ĐỎ HIỆN TẠI</div>', unsafe_allow_html=True)
+    indicators = state.get("red_indicators", [])
+    if indicators:
+        for ind in indicators:
             st.markdown(f"""
-            <div class="status-row" style="gap:14px; align-items:flex-start;">
-                <div style="font-family:var(--mono); font-size:1.5rem; font-weight:700;
-                    color:var(--{text_color}); min-width:32px; line-height:1;">{num}</div>
-                <div>
-                    <div style="font-weight:600; font-size:13px; color:var(--text);">{title}</div>
-                    <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">{desc}</div>
-                </div>
-                <div class="dot {color}" style="margin-left:auto; margin-top:6px; flex-shrink:0;"></div>
+            <div class="status-row">
+                <div class="dot red"></div>
+                <span style="font-size:13px; font-weight:500;">{ind}</span>
             </div>
             """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div class="alert-box info">
+            Chưa có dữ liệu. Hãy quét email để nhận diện chỉ số đỏ.
+        </div>
+        """, unsafe_allow_html=True)
 
-    with col_b:
-        st.markdown('<div class="section-label">CHỈ SỐ ĐỎ HIỆN TẠI</div>', unsafe_allow_html=True)
-        indicators = state.get("red_indicators", [])
-        if indicators:
-            for ind in indicators:
-                st.markdown(f"""
-                <div class="status-row">
-                    <div class="dot red"></div>
-                    <span style="font-size:13px; font-weight:500;">{ind}</span>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-            <div class="alert-box info">
-                Chưa có dữ liệu. Hãy quét email để nhận diện chỉ số đỏ.
-            </div>
-            """, unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown('<div class="section-label">THAO TÁC NHANH</div>', unsafe_allow_html=True)
-
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("📧 Quét Email", use_container_width=True):
-                st.session_state.page = "email_scan"
-                st.rerun()
-        with c2:
-            if st.button("📤 Gửi Báo cáo", use_container_width=True):
-                st.session_state.page = "send_email"
-                st.rerun()
-        if st.button("⚙️ Vào Cài đặt", use_container_width=True):
-            st.session_state.page = "settings"
+def _render_quick_actions() -> None:
+    st.markdown('<div class="section-label">THAO TÁC NHANH</div>', unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("📧 Quét Email", use_container_width=True):
+            st.session_state.page = "email_scan"
             st.rerun()
+    with c2:
+        if st.button("📤 Gửi Báo cáo", use_container_width=True):
+            st.session_state.page = "send_email"
+            st.rerun()
+    if st.button("⚙️ Vào Cài đặt", use_container_width=True):
+        st.session_state.page = "settings"
+        st.rerun()
 
-    # ── Auto-refresh ──────────────────────────────────────────────────────────
-    if st.session_state.pop("just_logged_in", False):
-        return
 
-    st.markdown("<hr style='border:none; border-top:1px solid var(--border); margin:8px 0;'>", unsafe_allow_html=True)
-
+def _render_auto_refresh_section() -> None:
+    st.markdown(
+        "<hr style='border:none; border-top:1px solid var(--border); margin:8px 0;'>",
+        unsafe_allow_html=True,
+    )
     col_status, col_toggle = st.columns([5, 1])
     with col_toggle:
         auto_refresh = st.toggle("Tự động cập nhật", value=False, key="dash_auto_refresh")

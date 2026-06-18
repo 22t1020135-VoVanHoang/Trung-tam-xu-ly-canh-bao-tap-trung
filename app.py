@@ -1,13 +1,26 @@
 """
 SOC Alert Automation System
 Hệ thống tự động hóa cảnh báo SOC - Chi nhánh Huế
+
+Thay đổi so với bản cũ (Bước 7 — dọn dẹp cuối cùng):
+  - Xóa import 'os' không dùng đến trong toàn file
+  - Xóa 3 session_state khởi tạo nhưng không nơi nào dùng: config_saved,
+    logs, last_email_data (rà soát toàn bộ pages/ xác nhận không tham chiếu)
+  - Xóa load_config()/save_config()/CONFIG_FILE định nghĩa riêng → dùng
+    utils.state_manager (đồng thời fix: save_config() cũ ghi file KHÔNG
+    atomic, KHÔNG lock — là file JSON duy nhất trong hệ thống chưa được
+    bảo vệ trước race condition)
+  - Xóa get_logo_b64() duplicate với login.py → dùng utils.ui_helpers
+  - settings_page.render() không cần nhận save_config làm tham số nữa —
+    trang tự import từ state_manager, nhất quán với mọi trang khác
+  - Thêm CSS .dot.blue (phòng hờ, dù hiện không trang nào dùng đến)
 """
 import streamlit as st
-import json
-import os
-import base64
 from datetime import datetime
-from pathlib import Path
+
+from utils.constants     import DEFAULT_BRANCH
+from utils.state_manager import load_config
+from utils.ui_helpers    import get_logo_b64
 
 # ─── Khởi tạo session state TRƯỚC mọi thứ ───────────────────────
 if "authenticated" not in st.session_state:
@@ -16,12 +29,6 @@ if "last_active" not in st.session_state:
     st.session_state.last_active = None
 if "page" not in st.session_state:
     st.session_state.page = "dashboard"
-if "config_saved" not in st.session_state:
-    st.session_state.config_saved = False
-if "logs" not in st.session_state:
-    st.session_state.logs = []
-if "last_email_data" not in st.session_state:
-    st.session_state.last_email_data = None
 
 # ─── Kiểm tra đăng nhập sớm để biết trạng thái ─────────────────
 from pages.login import is_logged_in, render_login
@@ -226,6 +233,7 @@ def load_css(logged_in: bool = False):
     .dot.red {{ background: var(--red); box-shadow: 0 0 6px var(--red); }}
     .dot.green {{ background: #48BB78; box-shadow: 0 0 6px #48BB78; }}
     .dot.orange {{ background: #ED8936; box-shadow: 0 0 6px #ED8936; }}
+    .dot.blue {{ background: #63B3ED; box-shadow: 0 0 6px #63B3ED; }}
     .dot.gray {{ background: var(--text-muted); }}
 
     /* Section headers */
@@ -502,37 +510,6 @@ if not _logged_in:
 
 # ─── Đã đăng nhập: load config và hiện app ──────────────────────
 
-# Config file path
-CONFIG_FILE = Path(__file__).parent / "config" / "settings.json"
-CONFIG_FILE.parent.mkdir(exist_ok=True)
-
-def load_config():
-    if CONFIG_FILE.exists():
-        with open(CONFIG_FILE, encoding="utf-8") as f:
-            return json.load(f)
-    return {
-        "email": {"address": "", "password": "", "imap_server": "imap.gmail.com", "smtp_server": "smtp.gmail.com"},
-        "google_sheets": {"spreadsheet_id": "11A4TuYjE3iLU92IvYK3UlOclB2baOd7Yawd4LyGrsW8", "credentials_path": ""},
-        "scheduler": {"scan_interval_minutes": 30, "reply_deadline_hour": 11, "reply_deadline_minute": 45},
-        "soc_sender_name": "SOC Canh bao",
-        "branch": "HUE",
-        "auth": {},
-    }
-
-def save_config(cfg):
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2, ensure_ascii=False)
-
-def get_logo_b64() -> str:
-    """Đọc logo.png từ thư mục gốc, trả về chuỗi base64."""
-    for p in [
-        Path(__file__).parent / "logo.png",
-        Path(__file__).parent / "assets" / "logo.png",
-    ]:
-        if p.exists():
-            return base64.b64encode(p.read_bytes()).decode()
-    return ""
-
 config = load_config()
 _logo_b64 = get_logo_b64()
 
@@ -579,7 +556,7 @@ with st.sidebar:
         logout()
     st.markdown(f"""
     <div style="font-family: var(--mono); font-size: 10px; color: var(--text-muted); padding: 8px 0;">
-        <div>BRANCH: {config.get('branch','HUE')}</div>
+        <div>BRANCH: {config.get('branch', DEFAULT_BRANCH)}</div>
         <div style="margin-top:4px;">BUILD: v1.0.0</div>
         <div style="margin-top:4px;">{datetime.now().strftime('%d/%m/%Y %H:%M')}</div>
     </div>
@@ -601,7 +578,7 @@ elif page == "send_email":
 elif page == "scheduler":
     scheduler_page.render(config)
 elif page == "settings":
-    settings_page.render(config, save_config)
+    settings_page.render(config)
 elif page == "history":
     history_page.render(config)
 elif page == "logs":

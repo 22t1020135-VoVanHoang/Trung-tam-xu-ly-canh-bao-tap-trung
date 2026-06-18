@@ -1,14 +1,16 @@
 """
 Lịch sử Báo cáo — xem lại các email giải trình đã gửi, lọc theo ngày
+
+Thay đổi so với bản cũ:
+  - Xóa HISTORY_FILE hardcode → dùng utils.constants.HISTORY_FILE
 """
 import streamlit as st
 import json
-from pathlib import Path
 from datetime import datetime
 
 import pandas as pd
 
-HISTORY_FILE = Path(__file__).parent.parent / "config" / "history.json"
+from utils.constants import HISTORY_FILE
 
 
 def load_history() -> list:

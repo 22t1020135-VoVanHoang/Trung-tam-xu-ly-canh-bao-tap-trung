@@ -1,49 +1,47 @@
 """
-Google Sheets viewer — Smart auto-refresh (không dùng time.sleep)
+pages/sheets_view.py
+Trang xem dữ liệu giải trình từ Google Sheets — auto-refresh thông minh (không dùng time.sleep).
+
+Thay đổi so với bản cũ:
+  - Xóa STATE_FILE / DEFAULT_STATE / load_state() duplicate → dùng utils.state_manager
+    (DEFAULT_STATE cũ chỉ có 2 keys → không nhất quán với bản đầy đủ ở constants.py)
+  - Xóa _has_streamlit_secrets() duplicate → dùng state_manager.has_streamlit_secrets()
+  - Tách render() thành các hàm nhỏ theo Single Responsibility
 """
 import streamlit as st
-import json
-from pathlib import Path
 from datetime import datetime
 
-STATE_FILE = Path(__file__).parent.parent / "config" / "state.json"
-
-DEFAULT_STATE = {"red_indicators": [], "report_date": None}
-
-def load_state():
-    if STATE_FILE.exists():
-        try:
-            with open(STATE_FILE, encoding="utf-8") as f:
-                content = f.read().strip()
-            if not content:
-                return DEFAULT_STATE.copy()
-            return json.loads(content)
-        except Exception:
-            try:
-                STATE_FILE.unlink()
-            except Exception:
-                pass
-            return DEFAULT_STATE.copy()
-    return DEFAULT_STATE.copy()
+from utils.state_manager import load_state, has_streamlit_secrets
 
 
-def _load_sheets_data(credentials_path, spreadsheet_id, indicators):
-    from utils.sheets_utils import collect_all_explanations
-    data = collect_all_explanations(credentials_path, spreadsheet_id, indicators, "")
-    st.session_state["sheets_cache"] = data
-    st.session_state["sheets_loaded_at"] = datetime.now().strftime("%H:%M:%S")
-    st.session_state["sheets_indicators_loaded"] = indicators[:]
-
-
-def render(config: dict):
+def render(config: dict) -> None:
     sheets_cfg     = config.get("google_sheets", {})
     spreadsheet_id = sheets_cfg.get("spreadsheet_id", "")
     creds_path     = sheets_cfg.get("credentials_path", "")
-    sheet_url      = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
 
     state          = load_state()
     red_indicators = state.get("red_indicators", [])
 
+    _render_header()
+    _render_info_bar(spreadsheet_id)
+
+    col_main, col_side = st.columns([3, 1])
+
+    with col_side:
+        selected, auto_refresh, refresh_sec = _render_options_panel(red_indicators)
+        _render_side_actions(creds_path, spreadsheet_id, selected, red_indicators)
+        if auto_refresh:
+            _render_auto_refresh(creds_path, spreadsheet_id, selected, red_indicators, refresh_sec)
+
+    with col_main:
+        _render_main_content(creds_path, spreadsheet_id, selected, red_indicators)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PRIVATE — UI components
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _render_header() -> None:
     st.markdown("""
     <div class="sys-header">
       <div>
@@ -53,6 +51,9 @@ def render(config: dict):
     </div>
     """, unsafe_allow_html=True)
 
+
+def _render_info_bar(spreadsheet_id: str) -> None:
+    sheet_url = f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
     col_info, col_open = st.columns([5, 1])
     with col_info:
         last_load = st.session_state.get("sheets_loaded_at", "—")
@@ -76,111 +77,124 @@ def render(config: dict):
             unsafe_allow_html=True,
         )
 
-    col_main, col_side = st.columns([3, 1])
 
-    with col_side:
-        st.markdown('<div class="section-label">TÙY CHỌN</div>', unsafe_allow_html=True)
+def _render_options_panel(red_indicators: list) -> tuple:
+    """Panel chọn chỉ số + cấu hình auto-refresh. Trả về (selected, auto_refresh, refresh_sec)."""
+    st.markdown('<div class="section-label">TÙY CHỌN</div>', unsafe_allow_html=True)
 
-        from utils.sheets_utils import INDICATOR_TO_SHEET
-        all_indicators = list(INDICATOR_TO_SHEET.keys())
-        selected = st.multiselect(
-            "Chọn chỉ số cần xem",
-            all_indicators,
-            default=red_indicators if red_indicators else [],
-        )
+    from utils.sheets_utils import INDICATOR_TO_SHEET
+    all_indicators = list(INDICATOR_TO_SHEET.keys())
+    selected = st.multiselect(
+        "Chọn chỉ số cần xem",
+        all_indicators,
+        default=red_indicators if red_indicators else [],
+    )
 
-        st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    auto_refresh = st.toggle("🔄 Tự động cập nhật", value=False)
+    refresh_sec  = st.selectbox(
+        "Kiểm tra mỗi", [30, 60, 120, 300], index=1,
+        format_func=lambda x: f"{x} giây",
+    )
+    return selected, auto_refresh, refresh_sec
 
-        auto_refresh = st.toggle("🔄 Tự động cập nhật", value=False)
-        refresh_sec  = st.selectbox(
-            "Kiểm tra mỗi",
-            [30, 60, 120, 300],
-            index=1,
-            format_func=lambda x: f"{x} giây",
-        )
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("🔄 Tải lại ngay", type="primary", use_container_width=True):
+def _render_side_actions(
+    creds_path: str, spreadsheet_id: str, selected: list, red_indicators: list
+) -> None:
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("🔄 Tải lại ngay", type="primary", use_container_width=True):
+        _load_sheets_data(creds_path, spreadsheet_id, selected or red_indicators)
+        st.rerun()
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("👁️ Xem trước Email", use_container_width=True):
+        st.session_state["preview_from_sheets"] = True
+        st.session_state.page = "send_email"
+        st.session_state.preview_email = True
+        st.rerun()
+
+
+def _render_auto_refresh(
+    creds_path: str, spreadsheet_id: str, selected: list,
+    red_indicators: list, refresh_sec: int,
+) -> None:
+    from streamlit_autorefresh import st_autorefresh
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="alert-box info" style="font-size:12px; text-align:center;">'
+        f'🔄 Tự động tải lại mỗi <strong>{refresh_sec}s</strong></div>',
+        unsafe_allow_html=True,
+    )
+    # st_autorefresh: không block UI, không tốn tài nguyên
+    refresh_count = st_autorefresh(interval=refresh_sec * 1000, key="sheets_autorefresh")
+    last_count = st.session_state.get("sheets_last_refresh_count", -1)
+    if refresh_count > last_count:
+        st.session_state["sheets_last_refresh_count"] = refresh_count
+        try:
             _load_sheets_data(creds_path, spreadsheet_id, selected or red_indicators)
-            st.rerun()
+        except Exception:
+            pass
 
-        st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("👁️ Xem trước Email", use_container_width=True):
-            st.session_state["preview_from_sheets"] = True
-            st.session_state.page = "send_email"
-            st.session_state.preview_email = True
-            st.rerun()
 
-        if auto_refresh:
-            from streamlit_autorefresh import st_autorefresh
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown(
-                f'<div class="alert-box info" style="font-size:12px; text-align:center;">'
-                f'🔄 Tự động tải lại mỗi <strong>{refresh_sec}s</strong></div>',
-                unsafe_allow_html=True,
-            )
-            # st_autorefresh: không block UI, không tốn tài nguyên
-            refresh_count = st_autorefresh(interval=refresh_sec * 1000, key="sheets_autorefresh")
-            last_count = st.session_state.get("sheets_last_refresh_count", -1)
-            if refresh_count > last_count:
-                st.session_state["sheets_last_refresh_count"] = refresh_count
-                try:
-                    _load_sheets_data(creds_path, spreadsheet_id, selected or red_indicators)
-                except Exception:
-                    pass
+def _render_main_content(
+    creds_path: str, spreadsheet_id: str, selected: list, red_indicators: list
+) -> None:
+    st.markdown('<div class="section-label">NỘI DUNG GIẢI TRÌNH</div>', unsafe_allow_html=True)
 
-    with col_main:
-        st.markdown('<div class="section-label">NỘI DUNG GIẢI TRÌNH</div>', unsafe_allow_html=True)
-
-        indicators_to_show = selected or red_indicators
-
-        if not indicators_to_show:
-            st.markdown(
-                '<div class="alert-box info">Chọn chỉ số bên phải hoặc quét email '
-                'trước để xác định chỉ số đỏ.</div>',
-                unsafe_allow_html=True,
-            )
-            return
-
-        has_creds = bool(creds_path) or _has_streamlit_secrets()
-        if not has_creds:
-            st.markdown(
-                '<div class="alert-box warning">⚠️ Chưa cấu hình Google Service Account. '
-                'Vào <strong>Cấu hình → Google Sheets</strong> để thiết lập.</div>',
-                unsafe_allow_html=True,
-            )
-            return
-
-        cached_indicators = st.session_state.get("sheets_indicators_loaded", [])
-        needs_reload = (
-            "sheets_cache" not in st.session_state
-            or sorted(cached_indicators) != sorted(indicators_to_show)
+    indicators_to_show = selected or red_indicators
+    if not indicators_to_show:
+        st.markdown(
+            '<div class="alert-box info">Chọn chỉ số bên phải hoặc quét email '
+            'trước để xác định chỉ số đỏ.</div>',
+            unsafe_allow_html=True,
         )
+        return
 
-        if needs_reload:
-            with st.spinner("Đang tải dữ liệu từ Google Sheets..."):
-                try:
-                    _load_sheets_data(creds_path, spreadsheet_id, indicators_to_show)
-                except Exception as e:
-                    st.markdown(
-                        f'<div class="alert-box error">❌ Lỗi kết nối Sheets: {str(e)}</div>',
-                        unsafe_allow_html=True,
-                    )
-                    return
+    has_creds = bool(creds_path) or has_streamlit_secrets()
+    if not has_creds:
+        st.markdown(
+            '<div class="alert-box warning">⚠️ Chưa cấu hình Google Service Account. '
+            'Vào <strong>Cấu hình → Google Sheets</strong> để thiết lập.</div>',
+            unsafe_allow_html=True,
+        )
+        return
 
-        data = st.session_state.get("sheets_cache", [])
-        _render_sheets_data(data)
+    cached_indicators = st.session_state.get("sheets_indicators_loaded", [])
+    needs_reload = (
+        "sheets_cache" not in st.session_state
+        or sorted(cached_indicators) != sorted(indicators_to_show)
+    )
+
+    if needs_reload:
+        with st.spinner("Đang tải dữ liệu từ Google Sheets..."):
+            try:
+                _load_sheets_data(creds_path, spreadsheet_id, indicators_to_show)
+            except Exception as e:
+                st.markdown(
+                    f'<div class="alert-box error">❌ Lỗi kết nối Sheets: {str(e)}</div>',
+                    unsafe_allow_html=True,
+                )
+                return
+
+    data = st.session_state.get("sheets_cache", [])
+    _render_sheets_data(data)
 
 
-def _has_streamlit_secrets() -> bool:
-    try:
-        import streamlit as st
-        return hasattr(st, 'secrets') and 'google_service_account' in st.secrets
-    except Exception:
-        return False
+# ─────────────────────────────────────────────────────────────────────────────
+# PRIVATE — Data loading
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _load_sheets_data(credentials_path: str, spreadsheet_id: str, indicators: list) -> None:
+    from utils.sheets_utils import collect_all_explanations
+    data = collect_all_explanations(credentials_path, spreadsheet_id, indicators, "")
+    st.session_state["sheets_cache"]             = data
+    st.session_state["sheets_loaded_at"]         = datetime.now().strftime("%H:%M:%S")
+    st.session_state["sheets_indicators_loaded"] = indicators[:]
 
 
-def _render_sheets_data(data: list):
+def _render_sheets_data(data: list) -> None:
     import pandas as pd
 
     if not data:
@@ -228,12 +242,7 @@ def _render_sheets_data(data: list):
 
         rows    = item["rows"]
         headers = item.get("headers") or list(rows[0].keys())
-        useful = [
-            h for h in headers
-            if any(str(r.get(h, "")).strip() for r in rows)
-        ]
-        if not useful:
-            useful = headers
+        useful  = [h for h in headers if any(str(r.get(h, "")).strip() for r in rows)] or headers
 
         df = pd.DataFrame(rows)[useful]
         st.dataframe(df, use_container_width=True, hide_index=True)
