@@ -102,7 +102,7 @@ def render(config: dict):
 
             label = (
                 f"{icon}  {entry.get('sent_at', '')}  ·  "
-                f"Ngày BC: {entry.get('report_date', '—')}  ·  "
+                f"Ngày BC: {entry.get('report_date') or '—'}  ·  "
                 f"{len(indicators)} chỉ số đỏ  ·  {total_rec_e} bản ghi"
             )
             with st.expander(label):
@@ -113,7 +113,7 @@ def render(config: dict):
                     <div class="config-section" style="padding:14px;">
                         <h4>THÔNG TIN GỬI</h4>
                         <div style="font-size:13px; line-height:2.2;">
-                            <div>📅 Ngày báo cáo : <strong>{entry.get('report_date','—')}</strong></div>
+                            <div>📅 Ngày báo cáo : <strong>{entry.get('report_date') or '—'}</strong></div>
                             <div>🕐 Gửi lúc      : <strong>{entry.get('sent_at','—')}</strong></div>
                             <div>📤 Gửi đến      : <strong>{entry.get('to_address','—')}</strong></div>
                             <div>🏢 Chi nhánh    : <strong>{entry.get('branch','—')}</strong></div>
@@ -175,7 +175,7 @@ def render(config: dict):
             for exp in entry.get("explanations", [])
         ]
         if flat:
-            csv = pd.DataFrame(flat).to_csv(index=False).encode("utf-8")
+            csv = pd.DataFrame(flat).to_csv(index=False).encode("utf-8-sig")
             st.download_button(
                 "⬇️ Xuất CSV",
                 data=csv,

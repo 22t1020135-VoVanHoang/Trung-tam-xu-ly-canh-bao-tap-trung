@@ -8,12 +8,16 @@ Thay đổi so với bản cũ:
      có thể không đồng bộ với các trang khác dùng bản DEFAULT_STATE đầy đủ hơn)
   - Thay magic string "SOC Canh bao" → DEFAULT_SOC_SENDER
   - Tách render() ~150 dòng → các hàm nhỏ theo Single Responsibility
+  - A4: Thêm banner cảnh báo lỗi quét liên tiếp + trạng thái gửi báo cáo hôm nay
+    ngay trên trang chủ — trước đây các thông tin này CHỈ hiện ở trang Lịch trình,
+    nên Admin nếu không chủ động vào đó sẽ không biết có nguy cơ trễ deadline.
 """
 import streamlit as st
 from datetime import datetime
 
-from utils.constants     import DEFAULT_SOC_SENDER
-from utils.state_manager import load_state
+from utils.constants        import DEFAULT_SOC_SENDER
+from utils.state_manager    import load_state
+from utils.schedule_helpers import calc_next_daily_run
 
 REFRESH_INTERVAL_MS = 60_000  # 60 giây
 
@@ -27,6 +31,7 @@ def render(config: dict) -> None:
     cfg_ok     = bool(config.get("email", {}).get("address"))
 
     _render_header()
+    _render_pending_alerts(state, deadline_h, deadline_m)
     _render_status_bar(state, deadline_h, deadline_m, cfg_ok)
     st.markdown("<br>", unsafe_allow_html=True)
     _render_metric_cards(state, red_count)
@@ -60,6 +65,65 @@ def _render_header() -> None:
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+
+def _render_pending_alerts(state: dict, deadline_h: int, deadline_m: int) -> None:
+    """
+    Banner cảnh báo ưu tiên cao — đặt ngay đầu trang để Admin không thể bỏ lỡ:
+      1. Lỗi quét email liên tiếp (nếu có) — trước đây CHỈ hiện ở trang Lịch trình
+      2. Trạng thái gửi báo cáo hôm nay: đã gửi / còn bao lâu đến deadline / quá hạn
+    """
+    scan_failures = state.get("consecutive_scan_failures", 0)
+    if scan_failures > 0:
+        st.markdown(f"""
+        <div class="alert-box error" style="margin-bottom:10px;">
+            ⚠️ Quét email đang lỗi <strong>{scan_failures} lần liên tiếp</strong> —
+            kiểm tra App Password/IMAP tại <strong>Cấu hình → Email</strong>.
+        </div>
+        """, unsafe_allow_html=True)
+
+    report_date = state.get("report_date")
+    if not report_date:
+        return  # Chưa có báo cáo nào được quét — không có gì để báo trạng thái
+
+    red_count = len(state.get("red_indicators", []))
+    already_sent = report_date == state.get("last_sent_report_date")
+
+    if already_sent:
+        st.markdown(f"""
+        <div class="alert-box success" style="margin-bottom:10px;">
+            ✅ Đã gửi giải trình cho báo cáo ngày <strong>{report_date}</strong>.
+        </div>
+        """, unsafe_allow_html=True)
+    elif red_count == 0:
+        st.markdown(f"""
+        <div class="alert-box info" style="margin-bottom:10px;">
+            ✅ Báo cáo ngày <strong>{report_date}</strong> không có chỉ số đỏ — không cần giải trình.
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        next_deadline = calc_next_daily_run(deadline_h, deadline_m)
+        remaining     = next_deadline - datetime.now()
+        total_minutes = max(0, int(remaining.total_seconds() // 60))
+        hours, minutes = divmod(total_minutes, 60)
+
+        if total_minutes <= 0:
+            time_phrase = "đã quá hạn"
+            box_class   = "error"
+        elif total_minutes <= 60:
+            time_phrase = f"còn {minutes} phút"
+            box_class   = "error"
+        else:
+            time_phrase = f"còn {hours} giờ {minutes} phút"
+            box_class   = "warning"
+
+        st.markdown(f"""
+        <div class="alert-box {box_class}" style="margin-bottom:10px;">
+            ⏳ Báo cáo ngày <strong>{report_date}</strong> ({red_count} chỉ số đỏ)
+            <strong>chưa được gửi</strong> — {time_phrase} đến deadline
+            {deadline_h:02d}:{deadline_m:02d}.
+        </div>
+        """, unsafe_allow_html=True)
 
 
 def _render_status_bar(state: dict, deadline_h: int, deadline_m: int, cfg_ok: bool) -> None:

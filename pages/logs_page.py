@@ -117,7 +117,7 @@ def _render_log_list(logs: list, action_filter: str, status_filter: str) -> None
     st.markdown("<br>", unsafe_allow_html=True)
     import pandas as pd
     df  = pd.DataFrame(filtered)
-    csv = df.to_csv(index=False).encode("utf-8")
+    csv = df.to_csv(index=False).encode("utf-8-sig")  # BOM giúp Excel Windows hiện đúng tiếng Việt
     st.download_button(
         "⬇️ Xuất CSV",
         data=csv,

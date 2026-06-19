@@ -70,7 +70,7 @@ def render(config: dict) -> None:
 
             from utils.sheets_utils import build_email_html
             html_body = build_email_html(
-                state.get("report_date", "N/A"),
+                _safe_report_date(state, fallback="N/A"),
                 config.get("branch", DEFAULT_BRANCH),
                 explanations,
             )
@@ -141,6 +141,12 @@ def _render_send_config(
     """
     Panel cấu hình gửi: To, Subject, CC, nút Xem trước + Gửi.
     Trả về (to_address, subject, cc_list).
+
+    Fix A3: bản cũ chỉ disable nút Gửi dựa trên all_required_ok (email đã cấu
+    hình + có chỉ số đỏ) — KHÔNG kiểm tra to_address có rỗng hay không. Nếu
+    state chưa từng có latest_email_sender (ví dụ thêm chỉ số đỏ thủ công mà
+    chưa quét email thật), người dùng vẫn bấm gửi được với ô "To" trống →
+    SMTP sẽ lỗi khi gửi cho danh sách người nhận rỗng.
     """
     st.markdown('<div class="section-label">CẤU HÌNH GỬI</div>', unsafe_allow_html=True)
 
@@ -152,6 +158,12 @@ def _render_send_config(
     )
     cc_list = [e.strip() for e in cc_input.split("\n") if e.strip()]
 
+    # Tính lại điều kiện gửi NGAY TẠI ĐÂY, sau khi đã biết to_address thực tế
+    # người dùng vừa nhập/sửa trong ô — all_required_ok truyền từ ngoài vào
+    # chưa thể biết giá trị này vì ô "To" render SAU khi all_required_ok được tính.
+    has_recipient = bool(to_address.strip())
+    can_send      = all_required_ok and has_recipient
+
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("🔍 Xem trước nội dung", use_container_width=True):
         st.session_state.preview_email = True
@@ -160,7 +172,7 @@ def _render_send_config(
     if st.button(
         "📤 Gửi Email Ngay", type="primary",
         use_container_width=True,
-        disabled=not all_required_ok,
+        disabled=not can_send,
     ):
         st.session_state.trigger_send   = True
         st.session_state.send_to        = to_address
@@ -171,6 +183,12 @@ def _render_send_config(
         st.markdown(
             '<div class="alert-box warning" style="font-size:12px;">'
             'Cần cấu hình email và có chỉ số đỏ.</div>',
+            unsafe_allow_html=True,
+        )
+    elif not has_recipient:
+        st.markdown(
+            '<div class="alert-box warning" style="font-size:12px;">'
+            '⚠️ Vui lòng nhập địa chỉ người nhận (To) trước khi gửi.</div>',
             unsafe_allow_html=True,
         )
 
@@ -285,9 +303,13 @@ def _do_send(
             # Quan trọng: cập nhật cả last_sent_report_date — nếu Admin gửi thủ
             # công, scheduler tự động (job_send_report) sẽ biết report_date này
             # ĐÃ được xử lý và không gửi trùng lại vào lần chạy tiếp theo.
+            # Dùng _safe_report_date() để KHÔNG lưu None vào state/history —
+            # nếu không, history_page.py hiển thị sẽ in chữ "None" (cùng lỗi
+            # .get() y hệt khi đọc lại từ history.json).
+            safe_report_date = _safe_report_date(state)
             state["last_email_sent"]       = datetime.now().strftime("%d/%m/%Y %H:%M")
             state["total_emails_sent"]     = state.get("total_emails_sent", 0) + 1
-            state["last_sent_report_date"] = state.get("report_date", "")
+            state["last_sent_report_date"] = safe_report_date
             save_state(state)
 
             # Ghi log thành công
@@ -299,7 +321,7 @@ def _do_send(
 
             # Lưu lịch sử (Fix Logic #1: đảm bảo history được ghi)
             append_history(
-                report_date    = state.get("report_date", ""),
+                report_date    = safe_report_date,
                 branch         = branch,
                 to_address     = to_address,
                 subject        = subject,
@@ -327,7 +349,7 @@ def _do_send(
 
             # Lưu lịch sử thất bại để truy vết
             append_history(
-                report_date    = state.get("report_date", ""),
+                report_date    = _safe_report_date(state),
                 branch         = branch,
                 to_address     = to_address,
                 subject        = subject,
@@ -346,8 +368,21 @@ def _do_send(
 # PRIVATE — Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _safe_report_date(state: dict, fallback: str = "chưa xác định") -> str:
+    """
+    Lấy report_date an toàn — tránh lỗi 'None' lọt vào email gửi cho SOC.
+
+    Fix A1: `state.get("report_date", "")` KHÔNG bảo vệ được trường hợp key
+    TỒN TẠI với giá trị None (chỉ áp dụng default khi key bị THIẾU hoàn toàn).
+    Vì DEFAULT_STATE có "report_date": None, và parse có thể thất bại không
+    tìm được ngày → giá trị thực trong state là None → f"...{None}" in ra
+    chữ "None" y nguyên trong tiêu đề/nội dung email gửi cho SOC.
+    """
+    return state.get("report_date") or fallback
+
+
 def _build_default_subject(state: dict) -> str:
     """Xây dựng tiêu đề email mặc định từ state."""
     original_subject = state.get("latest_email_subject") or DEFAULT_SOC_SENDER
-    report_date      = state.get("report_date", "")
+    report_date       = _safe_report_date(state)
     return f"Re: {original_subject} – Giải trình {report_date}"
