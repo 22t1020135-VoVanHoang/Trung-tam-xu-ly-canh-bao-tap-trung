@@ -152,7 +152,7 @@ def render(config: dict):
                             → <code style="font-size:11px;">{exp.get('sheet_name','')}</code>
                         </span>
                         <span style="margin-left:auto; font-family:var(--mono); font-size:11px;
-                            color:{'#48BB78' if has_data else '#ED8936'};">
+                            color:{'var(--green)' if has_data else 'var(--orange)'};">
                             {exp.get('count', 0)} dòng
                         </span>
                     </div>

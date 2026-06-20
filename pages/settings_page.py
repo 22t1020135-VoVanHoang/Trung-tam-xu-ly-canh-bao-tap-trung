@@ -12,6 +12,14 @@ Thay đổi so với bản cũ:
   - Xóa import DEFAULT_PASSWORD không dùng đến trong render_password_section()
   - Thêm append_log() cho mỗi lần lưu cấu hình — trước đây không có audit trail
     nào ghi lại ai đổi cấu hình gì, lúc nào
+  - B4: 4 xác nhận lưu/đổi mật khẩu (vốn là hành động đơn lẻ, ít rủi ro) chuyển
+    từ alert-box tĩnh (tồn tại vô thời hạn cho đến lần rerun kế tiếp) sang
+    st.toast (tự biến mất sau ~4s, không cần tương tác thêm để dismiss). 3
+    thông báo LỖI XÁC THỰC khi đổi mật khẩu vẫn giữ alert-box vì cần hiển thị
+    liên tục cho đến khi người dùng sửa đúng — không phù hợp với toast vốn tự
+    biến mất bất kể người dùng đã đọc hay chưa. Kết quả test kết nối (IMAP/
+    SMTP/Sheets) cũng GIỮ NGUYÊN alert-box vì chứa nội dung debug chi tiết cần
+    đọc kỹ, không phải xác nhận đơn giản.
 """
 import streamlit as st
 
@@ -79,7 +87,7 @@ def _render_email_tab(config: dict) -> None:
         }
         save_config(config)
         append_log("CONFIG_UPDATE", f"Cập nhật cấu hình Email ({address or 'trống'})", "success")
-        st.markdown('<div class="alert-box success">✅ Đã lưu cấu hình email!</div>', unsafe_allow_html=True)
+        st.toast("Đã lưu cấu hình email", icon="✅")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -107,7 +115,7 @@ def _render_sheets_tab(config: dict) -> None:
         config["google_sheets"] = {"spreadsheet_id": spreadsheet_id, "credentials_path": creds_path}
         save_config(config)
         append_log("CONFIG_UPDATE", "Cập nhật cấu hình Google Sheets", "success")
-        st.markdown('<div class="alert-box success">✅ Đã lưu cấu hình Google Sheets!</div>', unsafe_allow_html=True)
+        st.toast("Đã lưu cấu hình Google Sheets", icon="✅")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -144,7 +152,7 @@ def _render_system_tab(config: dict) -> None:
             f"Cập nhật hệ thống: chi nhánh={branch}, quét mỗi {scan_min}p, gửi lúc {reply_h:02d}:{reply_m:02d}",
             "success",
         )
-        st.markdown('<div class="alert-box success">✅ Đã lưu cài đặt!</div>', unsafe_allow_html=True)
+        st.toast("Đã lưu cài đặt hệ thống", icon="✅")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -220,4 +228,4 @@ def render_password_section(config: dict) -> None:
                 config["auth"]["password_hash"] = hash_password(new_pw)
                 save_config(config)
                 append_log("CONFIG_UPDATE", "Đổi mật khẩu đăng nhập", "warning")
-                st.markdown('<div class="alert-box success">✅ Đã đổi mật khẩu thành công!</div>', unsafe_allow_html=True)
+                st.toast("Đã đổi mật khẩu thành công", icon="✅")

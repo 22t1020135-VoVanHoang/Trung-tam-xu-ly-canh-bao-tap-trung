@@ -81,15 +81,39 @@ def load_css(logged_in: bool = False):
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap');
 
     :root {{
+        /* ── Màu semantic — mỗi màu có 2 sắc độ: bản "-dark" dùng cho viền/
+           border (độ tương phản thấp, dịu mắt), bản chính dùng cho text/value
+           (độ tương phản cao, dùng để truyền đạt thông tin).
+           FIX B3: trước đây chỉ có bản dark được đặt tên biến; bản sáng hơn
+           (vibrant) bị hardcode rải rác 10+ lần mỗi màu trên toàn dự án, và
+           --blue hoàn toàn không tồn tại dù dùng 8+ lần. */
         --red: #E53E3E;
         --red-light: #FEB2B2;
         --red-dark: #9B2335;
-        --orange: #DD6B20;
-        --green: #276749;
+
+        --orange-dark: #DD6B20;
+        --orange: #ED8936;
+
+        --green-dark: #276749;
+        --green: #48BB78;
         --green-light: #9AE6B4;
+
+        --blue-dark: #2B6CB0;
+        --blue: #63B3ED;
+        --blue-light: #90CDF4;
+
+        /* ── Elevation: nền sáng dần theo độ "nổi" của lớp UI (đúng nguyên
+           tắc dark-mode 2026 — KHÔNG dùng shadow đậm hơn để thể hiện độ nổi,
+           dùng nền sáng hơn). 3 cấp: card → input/hover → dropdown/popover. */
         --bg: #0A0A0B;
         --surface: #111113;
         --surface2: #1A1A1E;
+        --surface3: #232329;
+
+        /* ── Bo góc thống nhất — trước đây lẫn lộn 2px/3px/4px không có quy
+           tắc rõ ràng trên 12+ component khác nhau. */
+        --radius: 6px;
+        --radius-pill: 999px;
         --border: #2A2A30;
         --text: #E8E8EC;
         --text-muted: #6B6B78;
@@ -123,7 +147,7 @@ def load_css(logged_in: bool = False):
         padding: 20px 24px;
         background: linear-gradient(135deg, var(--red-dark) 0%, #1a0505 100%);
         border: 1px solid var(--red-dark);
-        border-radius: 4px;
+        border-radius: var(--radius);
         margin-bottom: 28px;
         position: relative;
         overflow: hidden;
@@ -147,7 +171,7 @@ def load_css(logged_in: bool = False):
         font-family: var(--mono);
         font-size: 10px;
         padding: 3px 8px;
-        border-radius: 2px;
+        border-radius: var(--radius-pill);
         text-transform: uppercase;
         letter-spacing: 1px;
         animation: pulse-badge 2s infinite;
@@ -180,14 +204,14 @@ def load_css(logged_in: bool = False):
     .metric-card {{
         background: var(--surface);
         border: 1px solid var(--border);
-        border-radius: 4px;
+        border-radius: var(--radius);
         padding: 16px 20px;
         position: relative;
     }}
     .metric-card.red {{ border-left: 3px solid var(--red); }}
-    .metric-card.green {{ border-left: 3px solid #276749; }}
-    .metric-card.orange {{ border-left: 3px solid var(--orange); }}
-    .metric-card.blue {{ border-left: 3px solid #2B6CB0; }}
+    .metric-card.green {{ border-left: 3px solid var(--green-dark); }}
+    .metric-card.orange {{ border-left: 3px solid var(--orange-dark); }}
+    .metric-card.blue {{ border-left: 3px solid var(--blue-dark); }}
 
     .metric-card .label {{
         font-family: var(--mono);
@@ -203,9 +227,9 @@ def load_css(logged_in: bool = False):
         line-height: 1;
     }}
     .metric-card.red .value {{ color: var(--red); }}
-    .metric-card.green .value {{ color: #48BB78; }}
-    .metric-card.orange .value {{ color: #ED8936; }}
-    .metric-card.blue .value {{ color: #63B3ED; }}
+    .metric-card.green .value {{ color: var(--green); }}
+    .metric-card.orange .value {{ color: var(--orange); }}
+    .metric-card.blue .value {{ color: var(--blue); }}
 
     .metric-card .sub {{
         font-size: 11px;
@@ -221,7 +245,7 @@ def load_css(logged_in: bool = False):
         padding: 12px 16px;
         background: var(--surface2);
         border: 1px solid var(--border);
-        border-radius: 3px;
+        border-radius: var(--radius);
         margin-bottom: 6px;
         font-size: 13px;
     }}
@@ -231,9 +255,9 @@ def load_css(logged_in: bool = False):
         flex-shrink: 0;
     }}
     .dot.red {{ background: var(--red); box-shadow: 0 0 6px var(--red); }}
-    .dot.green {{ background: #48BB78; box-shadow: 0 0 6px #48BB78; }}
-    .dot.orange {{ background: #ED8936; box-shadow: 0 0 6px #ED8936; }}
-    .dot.blue {{ background: #63B3ED; box-shadow: 0 0 6px #63B3ED; }}
+    .dot.green {{ background: var(--green); box-shadow: 0 0 6px var(--green); }}
+    .dot.orange {{ background: var(--orange); box-shadow: 0 0 6px var(--orange); }}
+    .dot.blue {{ background: var(--blue); box-shadow: 0 0 6px var(--blue); }}
     .dot.gray {{ background: var(--text-muted); }}
 
     /* Section headers */
@@ -253,7 +277,7 @@ def load_css(logged_in: bool = False):
         background: var(--surface2) !important;
         color: var(--text) !important;
         border: 1px solid var(--border) !important;
-        border-radius: 3px !important;
+        border-radius: var(--radius) !important;
         font-family: var(--mono) !important;
         font-size: 12px !important;
         padding: 8px 18px !important;
@@ -285,7 +309,7 @@ def load_css(logged_in: bool = False):
     [data-baseweb="textarea"] textarea {{
         background: var(--surface2) !important;
         border: 1px solid var(--border) !important;
-        border-radius: 3px !important;
+        border-radius: var(--radius) !important;
         color: var(--text) !important;
         font-family: var(--sans) !important;
     }}
@@ -302,7 +326,7 @@ def load_css(logged_in: bool = False):
     [data-testid="stMultiSelect"] [data-baseweb="select"] > div {{
         background: var(--surface2) !important;
         border: 1px solid var(--border) !important;
-        border-radius: 3px !important;
+        border-radius: var(--radius) !important;
         color: var(--text) !important;
     }}
     [data-testid="stDateInput"] input,
@@ -310,17 +334,19 @@ def load_css(logged_in: bool = False):
         color: var(--text) !important;
         background: var(--surface2) !important;
     }}
-    /* Dropdown popup menu */
+    /* Dropdown popup menu — elevation cấp 3 (cao hơn input/surface2 1 bậc,
+       đúng nguyên tắc dark-mode: độ nổi = nền sáng hơn, không phải shadow nặng) */
     [data-baseweb="popover"] ul,
     [data-baseweb="menu"] {{
-        background: var(--surface2) !important;
+        background: var(--surface3) !important;
         border: 1px solid var(--border) !important;
+        border-radius: var(--radius) !important;
     }}
     [data-baseweb="menu"] li {{
         color: var(--text) !important;
     }}
     [data-baseweb="menu"] li:hover {{
-        background: var(--surface) !important;
+        background: rgba(229,62,62,0.1) !important;
         color: var(--red) !important;
     }}
     /* Multiselect tags */
@@ -328,6 +354,7 @@ def load_css(logged_in: bool = False):
         background: rgba(229,62,62,0.15) !important;
         color: var(--red-light) !important;
         border: 1px solid rgba(229,62,62,0.3) !important;
+        border-radius: var(--radius) !important;
     }}
 
     /* Tabs */
@@ -355,7 +382,7 @@ def load_css(logged_in: bool = False):
     .streamlit-expanderHeader {{
         background: var(--surface) !important;
         border: 1px solid var(--border) !important;
-        border-radius: 3px !important;
+        border-radius: var(--radius) !important;
         font-family: var(--mono) !important;
         font-size: 12px !important;
         color: var(--text) !important;
@@ -364,13 +391,13 @@ def load_css(logged_in: bool = False):
     /* Dataframe */
     .stDataFrame {{
         border: 1px solid var(--border) !important;
-        border-radius: 3px !important;
+        border-radius: var(--radius) !important;
     }}
 
     /* Alert boxes */
     .alert-box {{
         padding: 14px 18px;
-        border-radius: 3px;
+        border-radius: var(--radius);
         margin-bottom: 12px;
         font-size: 13px;
         border-left: 3px solid;
@@ -378,22 +405,22 @@ def load_css(logged_in: bool = False):
     .alert-box.error {{
         background: rgba(229,62,62,0.08);
         border-color: var(--red);
-        color: #FEB2B2;
+        color: var(--red-light);
     }}
     .alert-box.success {{
         background: rgba(39,103,73,0.15);
-        border-color: #276749;
-        color: #9AE6B4;
+        border-color: var(--green-dark);
+        color: var(--green-light);
     }}
     .alert-box.warning {{
         background: rgba(221,107,32,0.1);
-        border-color: var(--orange);
+        border-color: var(--orange-dark);
         color: #FBBF24;
     }}
     .alert-box.info {{
         background: rgba(43,108,176,0.1);
-        border-color: #2B6CB0;
-        color: #90CDF4;
+        border-color: var(--blue-dark);
+        color: var(--blue-light);
     }}
 
     /* Timeline */
@@ -428,27 +455,52 @@ def load_css(logged_in: bool = False):
         border: 1px solid var(--border) !important;
     }}
 
-    /* Sidebar nav items */
-    .nav-item {{
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 14px;
-        border-radius: 3px;
-        cursor: pointer;
-        font-size: 13px;
-        margin-bottom: 2px;
-        transition: all 0.15s;
-        color: var(--text-muted);
-        border: 1px solid transparent;
+    /* ── Sidebar Navigation Items (B2 fix) ─────────────────────────────────
+       FIX BUG NGHIÊM TRỌNG: bản cũ định nghĩa .nav-item / .nav-item.active
+       nhưng sidebar render bằng st.button() → DOM thực tế là <button>, không
+       có class "nav-item" nào tồn tại → CSS cũ KHÔNG BAO GIỜ match, người
+       dùng không biết đang ở trang nào.
+       Fix: style trực tiếp lên <button> thật trong sidebar. Trang đang active
+       được Python gán type="primary" (xem app.py phần render sidebar) →
+       button[kind="primary"] là selector THẬT mà Streamlit render ra DOM.
+       Dùng border-left accent bar (pattern phổ biến ở Linear/Vercel sidebar)
+       thay vì fill đặc để trông "premium" hơn theo nghiên cứu dark-mode 2026. */
+    [data-testid="stSidebar"] .stButton > button {{
+        width: 100% !important;
+        display: flex !important;
+        justify-content: flex-start !important;
+        text-align: left !important;
+        background: transparent !important;
+        border: 1px solid transparent !important;
+        border-left: 3px solid transparent !important;
+        border-radius: var(--radius) !important;
+        color: var(--text-muted) !important;
+        font-family: var(--sans) !important;
+        font-size: 13.5px !important;
+        font-weight: 500 !important;
+        padding: 10px 14px !important;
+        margin-bottom: 2px !important;
+        transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease !important;
     }}
-    .nav-item:hover, .nav-item.active {{
-        background: rgba(229,62,62,0.08);
-        color: var(--text);
-        border-color: rgba(229,62,62,0.2);
+    [data-testid="stSidebar"] .stButton > button p {{
+        text-align: left !important;
     }}
-    .nav-item.active {{
-        color: var(--red);
+    [data-testid="stSidebar"] .stButton > button:hover {{
+        background: rgba(229,62,62,0.08) !important;
+        color: var(--text) !important;
+        border-left-color: rgba(229,62,62,0.35) !important;
+    }}
+    /* Trang đang active — type="primary" được gán động trong Python */
+    [data-testid="stSidebar"] .stButton > button[kind="primary"] {{
+        background: rgba(229,62,62,0.12) !important;
+        color: var(--red) !important;
+        border-left: 3px solid var(--red) !important;
+        font-weight: 700 !important;
+    }}
+    [data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {{
+        background: rgba(229,62,62,0.18) !important;
+        color: var(--red) !important;
+        border-left-color: var(--red) !important;
     }}
 
     /* Ẩn Deploy button, toolbar, header gap & Streamlit auto-nav */
@@ -479,7 +531,7 @@ def load_css(logged_in: bool = False):
     .config-section {{
         background: var(--surface);
         border: 1px solid var(--border);
-        border-radius: 4px;
+        border-radius: var(--radius);
         padding: 20px;
         margin-bottom: 16px;
     }}
@@ -520,7 +572,7 @@ with st.sidebar:
         st.markdown(f"""
         <div style="text-align:center; padding:16px 8px 12px;">
             <img src="data:image/png;base64,{_logo_b64}"
-                 style="width:90px; border-radius:8px;
+                 style="width:90px; border-radius:var(--radius);
                         box-shadow:0 2px 8px rgba(0,0,0,0.4);">
         </div>
         """, unsafe_allow_html=True)
@@ -544,11 +596,22 @@ with st.sidebar:
         ("📜", "Nhật ký",        "logs"),
     ]
 
+    # FIX B2: biến `active` trước đây được tính nhưng KHÔNG BAO GIỜ dùng tới
+    # (dead code) — CSS .nav-item.active cũng không match được DOM thật của
+    # st.button(). Giờ dùng is_active để gán type="primary", và CSS mới ở
+    # trên style trực tiếp lên button[kind="primary"] → active state hoạt
+    # động thật trên giao diện.
     for icon, label, key in pages:
-        active = "active" if st.session_state.page == key else ""
-        if st.button(f"{icon}  {label}", key=f"nav_{key}", use_container_width=True):
-            st.session_state.page = key
-            st.rerun()
+        is_active = st.session_state.page == key
+        if st.button(
+            f"{icon}  {label}",
+            key=f"nav_{key}",
+            use_container_width=True,
+            type="primary" if is_active else "secondary",
+        ):
+            if not is_active:  # tránh rerun thừa khi bấm lại đúng trang hiện tại
+                st.session_state.page = key
+                st.rerun()
 
     st.markdown("---")
     if st.button("🚪 Đăng xuất", use_container_width=True):

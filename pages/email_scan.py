@@ -152,7 +152,7 @@ def _render_kpi_cards(parsed: dict) -> None:
         st.markdown(f"""
         <div class="metric-card orange" style="padding:14px;">
             <div class="label">Ngày báo cáo</div>
-            <div style="font-size:1rem; font-weight:700; color:#ED8936; margin-top:4px;">
+            <div style="font-size:1rem; font-weight:700; color:var(--orange); margin-top:4px;">
                 {parsed.get('report_date') or 'Không xác định'}
             </div>
         </div>
@@ -224,39 +224,20 @@ def _render_manual_add(current_indicators: list) -> None:
                 f"Cập nhật thủ công chỉ số đỏ: {selected}",
                 "warning",
             )
-            st.success("Đã cập nhật!")
+            # B4: bản cũ dùng st.success() ngay trước st.rerun() → bị xóa
+            # NGAY LẬP TỨC, không bao giờ kịp hiển thị (cùng lỗi như
+            # scheduler_page.py). st.toast() sống sót qua rerun kế tiếp.
+            st.toast("Đã cập nhật danh sách chỉ số đỏ", icon="✅")
             st.rerun()
 
 
 def _render_raw_email(emails: list) -> None:
-    """Expander xem nội dung email gốc với màu sắc tương phản tốt."""
+    """Expander xem nội dung email gốc."""
     with st.expander("📄 Xem nội dung email gốc"):
-        if not emails:
+        if emails:
+            st.text_area("Nội dung", value=emails[0]["body"], height=300, disabled=True)
+        else:
             st.info("Không có dữ liệu email.")
-            return
-
-        import html as _html
-        body_escaped = _html.escape(emails[0]["body"])
-        st.markdown(f"""
-        <div style="
-            background : #0D1117;
-            border     : 1px solid #30363D;
-            border-radius : 6px;
-            padding    : 14px 16px;
-            max-height : 320px;
-            overflow-y : auto;
-        ">
-            <pre style="
-                margin      : 0;
-                color       : #C9D1D9;
-                font-size   : 12px;
-                font-family : 'Consolas', 'Courier New', monospace;
-                white-space : pre-wrap;
-                word-wrap   : break-word;
-                line-height : 1.6;
-            ">{body_escaped}</pre>
-        </div>
-        """, unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -281,11 +262,7 @@ def _do_scan(email_cfg: dict, sender_name: str, limit: int) -> None:
             mail.logout()
 
             if not emails:
-                st.markdown(
-                    f'<div class="alert-box warning">'
-                    f'Không tìm thấy email nào từ "{sender_name}".</div>',
-                    unsafe_allow_html=True,
-                )
+                st.toast(f'Không tìm thấy email nào từ "{sender_name}"', icon="⚠️")
                 append_log("SCAN_EMAIL", f'Không tìm thấy email từ "{sender_name}"', "warning")
                 return
 
@@ -324,14 +301,14 @@ def _do_scan(email_cfg: dict, sender_name: str, limit: int) -> None:
                 "success",
             )
 
-            st.markdown(
-                f'<div class="alert-box success">'
-                f'✅ Tìm thấy {len(emails)} email. Đã phân tích email mới nhất.</div>',
-                unsafe_allow_html=True,
-            )
+            # B4: bỏ alert-box chi tiết trùng lặp — _render_results() ngay
+            # bên dưới đã hiện đầy đủ KPI card + danh sách chỉ số đỏ, alert-box
+            # cũ chỉ lặp lại thông tin "tìm thấy N email" không cần thiết.
+            st.toast(f"Đã quét xong · tìm thấy {len(emails)} email", icon="✅")
 
         except Exception as e:
             err_msg = str(e)
+            st.toast("Lỗi kết nối IMAP — xem chi tiết bên dưới", icon="❌")
             st.markdown(
                 f'<div class="alert-box error">❌ Lỗi kết nối IMAP: {err_msg}</div>',
                 unsafe_allow_html=True,

@@ -122,7 +122,7 @@ def _render_readiness_check(
         hint_html = (
             f'<span style="margin-left:auto; font-size:11px; color:var(--text-muted);">{hint}</span>'
             if not ok else
-            '<span style="margin-left:auto; font-family:var(--mono); font-size:10px; color:#48BB78;">OK</span>'
+            '<span style="margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--green);">OK</span>'
         )
         st.markdown(f"""
         <div class="status-row">
@@ -330,6 +330,12 @@ def _do_send(
                 status         = "success",
             )
 
+            # B4: hành động "gửi email cho SOC" có rủi ro cao — giữ alert-box
+            # PERSISTENT (không tự biến mất) làm bằng chứng rõ ràng, đồng thời
+            # thêm toast để có phản hồi tức thì ngay khi vừa bấm gửi. Đây là
+            # lựa chọn có chủ đích, khác với các hành động ít rủi ro hơn
+            # (lưu cấu hình...) chỉ dùng toast đơn thuần.
+            st.toast(f"Đã gửi email đến {to_address}", icon="✅")
             st.markdown(
                 f'<div class="alert-box success">'
                 f'✅ Email đã gửi thành công đến <strong>{to_address}</strong> '
@@ -358,6 +364,7 @@ def _do_send(
                 status         = "error",
             )
 
+            st.toast("Gửi email thất bại — xem chi tiết bên dưới", icon="❌")
             st.markdown(
                 f'<div class="alert-box error">❌ Gửi thất bại: {err_msg}</div>',
                 unsafe_allow_html=True,

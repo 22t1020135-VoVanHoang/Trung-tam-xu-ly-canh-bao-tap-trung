@@ -55,6 +55,9 @@ def _render_filters(logs: list) -> tuple:
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("🗑️ Xoá nhật ký", use_container_width=True):
         write_json_atomic(LOG_FILE, [])
+        # B4: trước đây hành động xóa (destructive) hoàn toàn không có phản
+        # hồi nào — người dùng chỉ biết đã xóa qua việc danh sách trống đi.
+        st.toast("Đã xoá toàn bộ nhật ký", icon="🗑️")
         st.rerun()
 
     st.markdown("<br>", unsafe_allow_html=True)

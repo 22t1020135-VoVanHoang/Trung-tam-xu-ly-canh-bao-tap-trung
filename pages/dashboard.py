@@ -266,9 +266,9 @@ def _render_auto_refresh_section() -> None:
             interval_s = REFRESH_INTERVAL_MS // 1000
             st.markdown(
                 f'<div style="font-family:var(--mono); font-size:11px; '
-                f'color:#48BB78; padding:10px 0; display:flex; align-items:center; gap:6px;">'
-                f'<span style="width:6px;height:6px;border-radius:50%;background:#48BB78;'
-                f'display:inline-block;box-shadow:0 0 6px #48BB78;"></span>'
+                f'color:var(--green); padding:10px 0; display:flex; align-items:center; gap:6px;">'
+                f'<span style="width:6px;height:6px;border-radius:50%;background:var(--green);'
+                f'display:inline-block;box-shadow:0 0 6px var(--green);"></span>'
                 f'Đang tự động cập nhật · mỗi {interval_s} giây</div>',
                 unsafe_allow_html=True,
             )

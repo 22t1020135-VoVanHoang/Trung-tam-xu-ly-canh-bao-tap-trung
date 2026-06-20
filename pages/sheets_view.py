@@ -104,7 +104,14 @@ def _render_side_actions(
 ) -> None:
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("🔄 Tải lại ngay", type="primary", use_container_width=True):
-        _load_sheets_data(creds_path, spreadsheet_id, selected or red_indicators)
+        # B4: trước đây không có try/except → lỗi Sheets sẽ hiện traceback đỏ
+        # xấu của Streamlit thay vì thông báo gọn gàng. Đồng thời trước đây
+        # không có phản hồi nào cho hành động tải lại — thêm toast.
+        try:
+            _load_sheets_data(creds_path, spreadsheet_id, selected or red_indicators)
+            st.toast("Đã tải lại dữ liệu từ Google Sheets", icon="✅")
+        except Exception as e:
+            st.toast(f"Lỗi tải dữ liệu: {str(e)[:80]}", icon="❌")
         st.rerun()
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -218,7 +225,7 @@ def _render_sheets_data(data: list) -> None:
             → tab: <code style="font-size:11px;">{item['sheet_name']}</code>
           </span>
           <span style="margin-left:auto; font-family:var(--mono); font-size:11px;
-            color:{'#48BB78' if has_data else ('#E53E3E' if has_error else '#ED8936')};">
+            color:{'var(--green)' if has_data else ('var(--red)' if has_error else 'var(--orange)')};">
             {row_label}
           </span>
         </div>

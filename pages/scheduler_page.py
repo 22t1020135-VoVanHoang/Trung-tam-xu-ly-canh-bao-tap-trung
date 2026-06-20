@@ -107,10 +107,10 @@ def _render_job_list(sched_cfg: dict) -> None:
 
     for job in jobs:
         status_text  = "⚠ lỗi liên tiếp" if job["warning"] else "● active"
-        status_color = "#E53E3E" if job["warning"] else "#48BB78"
+        status_color = "var(--red)" if job["warning"] else "var(--green)"
         warning_html = (
             f'<div style="margin-top:8px; padding:8px 12px; background:rgba(229,62,62,0.1); '
-            f'border-radius:3px; font-size:11px; color:#FEB2B2;">{job["warning"]}</div>'
+            f'border-radius:var(--radius); font-size:11px; color:var(--red-light);">{job["warning"]}</div>'
             if job["warning"] else ""
         )
         st.markdown(f"""
@@ -185,7 +185,11 @@ def _render_schedule_config(config: dict, sched_cfg: dict) -> None:
             f"Cập nhật lịch: quét mỗi {new_interval}p, gửi lúc {new_deadline_h:02d}:{new_deadline_m:02d}",
             "success",
         )
-        st.markdown('<div class="alert-box success">✅ Đã lưu cấu hình lịch trình.</div>', unsafe_allow_html=True)
+        # B4: bản cũ gọi st.rerun() ngay sau alert-box → alert-box bị xóa
+        # NGAY LẬP TỨC, người dùng không bao giờ kịp nhìn thấy thông báo.
+        # st.toast() được Streamlit thiết kế để sống sót qua 1 lần rerun kế
+        # tiếp, nên đặt TRƯỚC st.rerun() vẫn hiển thị đúng cho người dùng.
+        st.toast("Đã lưu cấu hình lịch trình", icon="✅")
         st.rerun()
 
 
@@ -232,7 +236,7 @@ def _render_startup_guide() -> None:
             1. Mở <strong>File Explorer</strong> (phím <code style="background:#2A2A30; padding:2px 6px; border-radius:3px;">Windows + E</code>)<br>
             2. Vào thư mục <code style="background:#2A2A30; padding:2px 6px; border-radius:3px;">E:\\soc-hue\\</code><br>
             3. Bấm đúp chuột vào file <code style="background:#E53E3E; color:white; padding:2px 8px; border-radius:3px;">start_soc.bat</code><br>
-            <span style="color:#48BB78;">→ Hệ thống tự động mở 2 cửa sổ: <strong>App</strong> và <strong>Watchdog</strong>.</span>
+            <span style="color:var(--green);">→ Hệ thống tự động mở 2 cửa sổ: <strong>App</strong> và <strong>Watchdog</strong>.</span>
         </div>
         """, unsafe_allow_html=True)
 
