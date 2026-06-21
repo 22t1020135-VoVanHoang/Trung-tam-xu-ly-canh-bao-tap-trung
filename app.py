@@ -102,6 +102,13 @@ def load_css(logged_in: bool = False):
         --blue: #63B3ED;
         --blue-light: #90CDF4;
 
+        /* B6: nền tối pha màu riêng cho từng biến thể header — song song với
+           #1a0505 (nền tối pha đỏ) vốn đã dùng cho header mặc định. */
+        --red-header-end: #1a0505;
+        --blue-header-end: #051420;
+        --green-header-end: #051f10;
+        --orange-header-end: #1f1005;
+
         /* ── Elevation: nền sáng dần theo độ "nổi" của lớp UI (đúng nguyên
            tắc dark-mode 2026 — KHÔNG dùng shadow đậm hơn để thể hiện độ nổi,
            dùng nền sáng hơn). 3 cấp: card → input/hover → dropdown/popover. */
@@ -119,6 +126,21 @@ def load_css(logged_in: bool = False):
         --text-muted: #6B6B78;
         --mono: 'IBM Plex Mono', monospace;
         --sans: 'IBM Plex Sans Thai', sans-serif;
+
+        /* ── Type scale — B7: trước đây 17 giá trị font-size khác nhau
+           (10/11/12/13/13.5/14px, 1/1.1/1.25/1.4/1.5/2rem) rải rác không
+           quy tắc trên toàn dự án. Gộp về 9 cấp có vai trò rõ ràng. Đặt
+           prefix "fs" (font-size) thay vì "text" để không trùng tên với
+           --text (màu chữ) đã tồn tại sẵn. */
+        --fs-2xs:  10px;   /* badge, label mono viết hoa nhỏ nhất */
+        --fs-xs:   11px;   /* meta info, mô tả phụ trong timeline/log */
+        --fs-sm:   12px;   /* code, button, input, phần tử UI mật độ cao */
+        --fs-base: 13px;   /* nội dung chính — status-row, danh sách */
+        --fs-md:   1rem;     /* ~16px — giá trị card phụ (ngày/giờ dạng chữ) */
+        --fs-lg:   1.1rem;   /* ~17.6px — heading phụ, brand text */
+        --fs-xl:   1.4rem;   /* ~22.4px — tiêu đề trang (sys-header h1) */
+        --fs-2xl:  1.5rem;   /* 24px — số thứ tự lớn (workflow steps) */
+        --fs-3xl:  2rem;     /* 32px — con số nổi bật nhất (metric-card) */
     }}
 
     html, body, [class*="css"] {{
@@ -140,12 +162,29 @@ def load_css(logged_in: bool = False):
     }}
 
     /* Header */
+    /* ── Page header — B6: phân biệt theo ngữ cảnh trang ─────────────────────
+       FIX VẤN ĐỀ B1 #2: trước đây MỌI trang dùng cùng 1 gradient đỏ y hệt
+       nhau, người dùng không phân biệt được ngữ cảnh khi lướt nhanh qua các
+       trang. Giờ chia theo 4 nhóm ngữ nghĩa:
+         RED    (mặc định, không thêm class) → Dashboard, Gửi Email
+                 (2 trang có tính hành động/quan trọng nhất hệ thống)
+         BLUE   (.sys-header.blue)  → Quét Email, Lịch sử BC, Nhật ký
+                 (nhóm "xem dữ liệu" — thông tin, không thay đổi gì)
+         GREEN  (.sys-header.green) → Google Sheets
+                 (nơi giải trình ĐƯỢC GIẢI QUYẾT — đồng thời trùng màu
+                 thương hiệu Google Sheets, một sự trùng hợp có chủ đích)
+         ORANGE (.sys-header.orange)→ Lịch trình, Cấu hình
+                 (nhóm "vận hành/hệ thống" — khớp với màu cam đã dùng cho
+                 các yếu tố liên quan thời gian/deadline ở nơi khác trong app)
+       Đỏ vẫn là màu chủ đạo của thương hiệu — KHÔNG đổi thành "cầu vồng",
+       chỉ 4 sắc thái có chủ đích, đúng nguyên tắc "1 accent nhất quán mỗi
+       ngữ cảnh" đã trích dẫn ở B1, không phải vi phạm nó. */
     .sys-header {{
         display: flex;
         align-items: center;
         gap: 16px;
         padding: 20px 24px;
-        background: linear-gradient(135deg, var(--red-dark) 0%, #1a0505 100%);
+        background: linear-gradient(135deg, var(--red-dark) 0%, var(--red-header-end) 100%);
         border: 1px solid var(--red-dark);
         border-radius: var(--radius);
         margin-bottom: 28px;
@@ -165,11 +204,41 @@ def load_css(logged_in: bool = False):
             rgba(229,62,62,0.05) 20px
         );
     }}
+    .sys-header.blue {{
+        background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue-header-end) 100%);
+        border-color: var(--blue-dark);
+    }}
+    .sys-header.blue::before {{
+        background: repeating-linear-gradient(
+            45deg, transparent, transparent 10px,
+            rgba(99,179,237,0.06) 10px, rgba(99,179,237,0.06) 20px
+        );
+    }}
+    .sys-header.green {{
+        background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-header-end) 100%);
+        border-color: var(--green-dark);
+    }}
+    .sys-header.green::before {{
+        background: repeating-linear-gradient(
+            45deg, transparent, transparent 10px,
+            rgba(72,187,120,0.06) 10px, rgba(72,187,120,0.06) 20px
+        );
+    }}
+    .sys-header.orange {{
+        background: linear-gradient(135deg, var(--orange-dark) 0%, var(--orange-header-end) 100%);
+        border-color: var(--orange-dark);
+    }}
+    .sys-header.orange::before {{
+        background: repeating-linear-gradient(
+            45deg, transparent, transparent 10px,
+            rgba(237,137,54,0.06) 10px, rgba(237,137,54,0.06) 20px
+        );
+    }}
     .sys-header .badge {{
         background: var(--red);
         color: white;
         font-family: var(--mono);
-        font-size: 10px;
+        font-size: var(--fs-2xs);
         padding: 3px 8px;
         border-radius: var(--radius-pill);
         text-transform: uppercase;
@@ -180,8 +249,22 @@ def load_css(logged_in: bool = False):
         0%, 100% {{ opacity: 1; }}
         50% {{ opacity: 0.6; }}
     }}
+    /* B5: tắt animation cho người dùng đã bật "Giảm hiệu ứng chuyển động"
+       trong hệ điều hành (Windows: Settings > Accessibility > Visual
+       effects > Animation effects = Off) — lỗi WCAG đã chỉ ra ở B1 (#10),
+       trước đây animation chạy vô điều kiện, không tôn trọng lựa chọn này. */
+    @media (prefers-reduced-motion: reduce) {{
+        .sys-header .badge {{
+            animation: none !important;
+        }}
+        *, *::before, *::after {{
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }}
+    }}
     .sys-header h1 {{
-        font-size: 1.4rem !important;
+        font-size: var(--fs-xl) !important;
         font-weight: 700 !important;
         margin: 0 !important;
         color: white !important;
@@ -189,7 +272,7 @@ def load_css(logged_in: bool = False):
     }}
     .sys-header .subtitle {{
         font-family: var(--mono);
-        font-size: 11px;
+        font-size: var(--fs-xs);
         color: rgba(255,255,255,0.5);
         margin-top: 2px;
     }}
@@ -207,6 +290,7 @@ def load_css(logged_in: bool = False):
         border-radius: var(--radius);
         padding: 16px 20px;
         position: relative;
+        overflow: hidden;
     }}
     .metric-card.red {{ border-left: 3px solid var(--red); }}
     .metric-card.green {{ border-left: 3px solid var(--green-dark); }}
@@ -215,16 +299,23 @@ def load_css(logged_in: bool = False):
 
     .metric-card .label {{
         font-family: var(--mono);
-        font-size: 10px;
+        font-size: var(--fs-2xs);
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 1px;
         margin-bottom: 8px;
     }}
     .metric-card .value {{
-        font-size: 2rem;
+        font-size: var(--fs-3xl);
         font-weight: 700;
         line-height: 1;
+        /* B8: trước đây không xử lý overflow — số 3+ chữ số (vd: "1.234")
+           hoặc chuỗi ngày/giờ dài có thể tràn ra ngoài card, phá vỡ layout.
+           Cắt gọn bằng "..." thay vì tràn hoặc tự xuống dòng làm vỡ chiều
+           cao card. */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }}
     .metric-card.red .value {{ color: var(--red); }}
     .metric-card.green .value {{ color: var(--green); }}
@@ -232,7 +323,7 @@ def load_css(logged_in: bool = False):
     .metric-card.blue .value {{ color: var(--blue); }}
 
     .metric-card .sub {{
-        font-size: 11px;
+        font-size: var(--fs-xs);
         color: var(--text-muted);
         margin-top: 4px;
     }}
@@ -247,7 +338,7 @@ def load_css(logged_in: bool = False):
         border: 1px solid var(--border);
         border-radius: var(--radius);
         margin-bottom: 6px;
-        font-size: 13px;
+        font-size: var(--fs-base);
     }}
     .dot {{
         width: 8px; height: 8px;
@@ -260,16 +351,31 @@ def load_css(logged_in: bool = False):
     .dot.blue {{ background: var(--blue); box-shadow: 0 0 6px var(--blue); }}
     .dot.gray {{ background: var(--text-muted); }}
 
-    /* Section headers */
+    /* Section headers — B7: thêm biến thể .primary cho section NỘI DUNG
+       CHÍNH của mỗi trang (vd: "Nội dung giải trình", "Kết quả quét"),
+       phân biệt với section phụ (bộ lọc, cấu hình). Trước đây MỌI section
+       dùng cùng 1 style — khi mọi thứ đều được nhấn mạnh, không gì được
+       nhấn mạnh (B1 audit #7). */
     .section-label {{
         font-family: var(--mono);
-        font-size: 11px;
+        font-size: var(--fs-xs);
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 2px;
         padding-bottom: 8px;
         border-bottom: 1px solid var(--border);
         margin-bottom: 16px;
+    }}
+    .section-label.primary {{
+        color: var(--text);
+        font-weight: 600;
+        letter-spacing: 1px;
+        padding-left: 10px;
+        border-left: 3px solid var(--red);
+        border-bottom: none;
+        padding-bottom: 0;
+        margin-bottom: 16px;
+        line-height: 1.6;
     }}
 
     /* Buttons */
@@ -279,7 +385,7 @@ def load_css(logged_in: bool = False):
         border: 1px solid var(--border) !important;
         border-radius: var(--radius) !important;
         font-family: var(--mono) !important;
-        font-size: 12px !important;
+        font-size: var(--fs-sm) !important;
         padding: 8px 18px !important;
         transition: all 0.15s !important;
     }}
@@ -287,6 +393,13 @@ def load_css(logged_in: bool = False):
         border-color: var(--red) !important;
         color: var(--red) !important;
         background: rgba(229,62,62,0.05) !important;
+    }}
+    /* B5: button là phần tử người dùng Tab tới NHIỀU NHẤT trong toàn app
+       (mọi hành động đều qua nút bấm) — trước đây không có focus-visible
+       nào, người dùng bàn phím không biết nút nào đang được chọn. */
+    .stButton > button:focus-visible {{
+        outline: 2px solid var(--red) !important;
+        outline-offset: 2px !important;
     }}
 
     /* Primary button */
@@ -299,6 +412,10 @@ def load_css(logged_in: bool = False):
         background: var(--red-dark) !important;
         border-color: var(--red-dark) !important;
         color: white !important;
+    }}
+    .stButton > button[kind="primary"]:focus-visible {{
+        outline: 2px solid var(--text) !important;
+        outline-offset: 2px !important;
     }}
 
     /* Input fields — dark theme toàn diện */
@@ -313,11 +430,16 @@ def load_css(logged_in: bool = False):
         color: var(--text) !important;
         font-family: var(--sans) !important;
     }}
-    .stTextInput > div > div > input:focus,
-    .stTextArea > div > div > textarea:focus,
-    [data-baseweb="input"] input:focus {{
+    /* B5: dùng :focus-visible thay vì :focus — chỉ hiện ring khi điều hướng
+       bằng bàn phím (Tab), KHÔNG hiện khi click chuột (pattern chuẩn 2026,
+       tránh ring "thừa" gây khó chịu cho người dùng mouse trong khi vẫn đảm
+       bảo bàn phím luôn nhìn thấy vị trí đang ở đâu — yêu cầu WCAG AA). */
+    .stTextInput > div > div > input:focus-visible,
+    .stTextArea > div > div > textarea:focus-visible,
+    [data-baseweb="input"] input:focus-visible {{
+        outline: 2px solid var(--red) !important;
+        outline-offset: 1px !important;
         border-color: var(--red) !important;
-        box-shadow: 0 0 0 1px var(--red) !important;
     }}
     /* Selectbox, date input, number input */
     [data-testid="stSelectbox"]   [data-baseweb="select"] > div,
@@ -328,6 +450,17 @@ def load_css(logged_in: bool = False):
         border: 1px solid var(--border) !important;
         border-radius: var(--radius) !important;
         color: var(--text) !important;
+    }}
+    /* B5: trước đây nhóm này KHÔNG có focus indicator nào — Tab qua dropdown
+       không cho biết đang ở đâu. :focus-within vì focus thực sự nằm trên 1
+       phần tử con ẩn (input/button) bên trong div wrapper này. */
+    [data-testid="stSelectbox"]   [data-baseweb="select"]:focus-within > div,
+    [data-testid="stDateInput"]   [data-baseweb="input"]:focus-within  > div,
+    [data-testid="stNumberInput"] [data-baseweb="input"]:focus-within  > div,
+    [data-testid="stMultiSelect"] [data-baseweb="select"]:focus-within > div {{
+        outline: 2px solid var(--red) !important;
+        outline-offset: 1px !important;
+        border-color: var(--red) !important;
     }}
     [data-testid="stDateInput"] input,
     [data-testid="stNumberInput"] input {{
@@ -367,7 +500,7 @@ def load_css(logged_in: bool = False):
         background: transparent !important;
         color: var(--text-muted) !important;
         font-family: var(--mono) !important;
-        font-size: 12px !important;
+        font-size: var(--fs-sm) !important;
         padding: 10px 20px !important;
         border-bottom: 2px solid transparent !important;
         border-radius: 0 !important;
@@ -377,6 +510,13 @@ def load_css(logged_in: bool = False):
         border-bottom-color: var(--red) !important;
         background: transparent !important;
     }}
+    /* B5: tab trước đây không có focus-visible — Tab bằng bàn phím qua các
+       tab (Email / Google Sheets / Hệ thống / Kết nối test) không biết đang
+       ở tab nào nếu chưa click chuột. */
+    .stTabs [data-baseweb="tab"]:focus-visible {{
+        outline: 2px solid var(--red) !important;
+        outline-offset: -2px !important;
+    }}
 
     /* Expander */
     .streamlit-expanderHeader {{
@@ -384,8 +524,27 @@ def load_css(logged_in: bool = False):
         border: 1px solid var(--border) !important;
         border-radius: var(--radius) !important;
         font-family: var(--mono) !important;
-        font-size: 12px !important;
+        font-size: var(--fs-sm) !important;
         color: var(--text) !important;
+    }}
+    .streamlit-expanderHeader:focus-visible {{
+        outline: 2px solid var(--red) !important;
+        outline-offset: 1px !important;
+    }}
+
+    /* Toggle / Checkbox — trước đây KHÔNG có style riêng nào, dùng nguyên
+       giao diện mặc định của Streamlit (sáng, lệch tông với dark theme).
+       Input thật bị BaseWeb ẩn trực quan bên trong switch, nên dùng
+       :focus-within trên label cha để vòng focus bao quanh toàn bộ switch. */
+    [data-testid="stToggle"] label,
+    [data-testid="stCheckbox"] label {{
+        color: var(--text) !important;
+    }}
+    [data-testid="stToggle"] label:focus-within,
+    [data-testid="stCheckbox"] label:focus-within {{
+        outline: 2px solid var(--red) !important;
+        outline-offset: 2px !important;
+        border-radius: var(--radius) !important;
     }}
 
     /* Dataframe */
@@ -399,7 +558,7 @@ def load_css(logged_in: bool = False):
         padding: 14px 18px;
         border-radius: var(--radius);
         margin-bottom: 12px;
-        font-size: 13px;
+        font-size: var(--fs-base);
         border-left: 3px solid;
     }}
     .alert-box.error {{
@@ -423,29 +582,44 @@ def load_css(logged_in: bool = False):
         color: var(--blue-light);
     }}
 
-    /* Timeline */
+    /* Timeline — B7: 2 vấn đề được sửa
+       (1) min-width 80px QUÁ HẸP cho format "dd/mm/yyyy HH:MM:SS" (19 ký tự,
+           mono font) → bị wrap xuống dòng ở màn hình hẹp. Tăng lên 132px.
+       (2) Dot trạng thái trước đây đặt CUỐI dòng bằng margin-left:auto trong
+           Python, bị đẩy ra tận rìa phải bất kể nội dung dài hay ngắn → tạo
+           khoảng trống chết rất lớn khi mô tả ngắn (đúng như phát hiện thực
+           tế từ ảnh chụp màn hình Nhật ký). Chuyển dot ra ĐẦU dòng làm
+           "mốc thời gian" thật sự — pattern chuẩn của timeline GitHub/Linear,
+           đồng thời loại bỏ hoàn toàn khoảng trống chết vì không còn phần tử
+           nào bị đẩy ra rìa nữa. */
     .timeline-item {{
         display: flex;
-        gap: 16px;
+        align-items: flex-start;
+        gap: 14px;
         padding: 12px 0;
         border-bottom: 1px solid var(--border);
     }}
+    .timeline-item .dot {{
+        margin-top: 5px;
+        flex-shrink: 0;
+    }}
     .timeline-time {{
         font-family: var(--mono);
-        font-size: 11px;
+        font-size: var(--fs-xs);
         color: var(--text-muted);
-        min-width: 80px;
+        min-width: 132px;
+        flex-shrink: 0;
         padding-top: 2px;
     }}
-    .timeline-content {{ flex: 1; }}
+    .timeline-content {{ flex: 1; min-width: 0; }}
     .timeline-title {{
-        font-size: 13px;
+        font-size: var(--fs-base);
         font-weight: 600;
         color: var(--text);
         margin-bottom: 3px;
     }}
     .timeline-desc {{
-        font-size: 12px;
+        font-size: var(--fs-sm);
         color: var(--text-muted);
     }}
 
@@ -476,7 +650,7 @@ def load_css(logged_in: bool = False):
         border-radius: var(--radius) !important;
         color: var(--text-muted) !important;
         font-family: var(--sans) !important;
-        font-size: 13.5px !important;
+        font-size: var(--fs-base) !important;
         font-weight: 500 !important;
         padding: 10px 14px !important;
         margin-bottom: 2px !important;
@@ -501,6 +675,14 @@ def load_css(logged_in: bool = False):
         background: rgba(229,62,62,0.18) !important;
         color: var(--red) !important;
         border-left-color: var(--red) !important;
+    }}
+    /* B5: override outline-offset riêng cho sidebar — các nút xếp sát nhau
+       theo chiều dọc (margin-bottom chỉ 2px), nếu dùng outline-offset dương
+       như rule button chung, ring sẽ bị nút liền kề cắt mất 1 phần. Inset
+       (-2px) giữ ring gọn bên trong, luôn hiển thị đầy đủ. */
+    [data-testid="stSidebar"] .stButton > button:focus-visible {{
+        outline: 2px solid var(--red) !important;
+        outline-offset: -2px !important;
     }}
 
     /* Ẩn Deploy button, toolbar, header gap & Streamlit auto-nav */
@@ -537,7 +719,7 @@ def load_css(logged_in: bool = False):
     }}
     .config-section h4 {{
         font-family: var(--mono);
-        font-size: 11px;
+        font-size: var(--fs-xs);
         text-transform: uppercase;
         letter-spacing: 2px;
         color: var(--text-muted);
@@ -568,9 +750,15 @@ _logo_b64 = get_logo_b64()
 # ─── Sidebar ────────────────────────────────────────────────────
 with st.sidebar:
     # ── Logo FPT Telecom ──
+    # B8: trước đây logo (padding 16/8/12) và khối brand info (padding 8/0/20)
+    # dùng các con số rời rạc không theo quy tắc — khoảng cách giữa 2 khối
+    # liên quan mật thiết (logo + tên thương hiệu) lại gần bằng khoảng cách
+    # tới khối KHÔNG liên quan (menu điều hướng). Theo nguyên tắc Gestalt
+    # (proximity), các phần tử cùng nhóm nên gần nhau hơn phần tử khác nhóm.
+    # Giảm padding-bottom của logo, đưa 2 khối lại gần nhau rõ rệt hơn.
     if _logo_b64:
         st.markdown(f"""
-        <div style="text-align:center; padding:16px 8px 12px;">
+        <div style="text-align:center; padding:20px 8px 8px;">
             <img src="data:image/png;base64,{_logo_b64}"
                  style="width:90px; border-radius:var(--radius);
                         box-shadow:0 2px 8px rgba(0,0,0,0.4);">
@@ -578,10 +766,10 @@ with st.sidebar:
         """, unsafe_allow_html=True)
 
     st.markdown("""
-    <div style="padding: 8px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px; text-align:center;">
-        <div style="font-family: var(--mono); font-size: 10px; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;">SOC SYSTEM</div>
-        <div style="font-size: 1.1rem; font-weight: 700; color: var(--text); margin-top: 4px;">FPT Telecom AUTOMATION</div>
-        <div style="font-family: var(--mono); font-size: 10px; color: var(--red); margin-top: 2px;">● ACTIVE</div>
+    <div style="padding: 0 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px; text-align:center;">
+        <div style="font-family: var(--mono); font-size: var(--fs-2xs); color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;">SOC SYSTEM</div>
+        <div style="font-size: var(--fs-lg); font-weight: 700; color: var(--text); margin-top: 4px;">FPT Telecom AUTOMATION</div>
+        <div style="font-family: var(--mono); font-size: var(--fs-2xs); color: var(--red); margin-top: 2px;">● ACTIVE</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -618,7 +806,7 @@ with st.sidebar:
         from pages.login import logout
         logout()
     st.markdown(f"""
-    <div style="font-family: var(--mono); font-size: 10px; color: var(--text-muted); padding: 8px 0;">
+    <div style="font-family: var(--mono); font-size: var(--fs-2xs); color: var(--text-muted); padding: 8px 0;">
         <div>BRANCH: {config.get('branch', DEFAULT_BRANCH)}</div>
         <div style="margin-top:4px;">BUILD: v1.0.0</div>
         <div style="margin-top:4px;">{datetime.now().strftime('%d/%m/%Y %H:%M')}</div>

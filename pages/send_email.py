@@ -57,7 +57,7 @@ def render(config: dict) -> None:
         )
 
     with col_content:
-        st.markdown('<div class="section-label">NỘI DUNG EMAIL</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label primary">NỘI DUNG EMAIL</div>', unsafe_allow_html=True)
 
         if st.session_state.get("trigger_send") or st.session_state.get("preview_email"):
             is_send = st.session_state.pop("trigger_send", False)
@@ -120,14 +120,14 @@ def _render_readiness_check(
     for label, ok, hint, optional in checks:
         color    = "green" if ok else ("orange" if optional else "red")
         hint_html = (
-            f'<span style="margin-left:auto; font-size:11px; color:var(--text-muted);">{hint}</span>'
+            f'<span style="margin-left:auto; font-size:var(--fs-xs); color:var(--text-muted);">{hint}</span>'
             if not ok else
-            '<span style="margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--green);">OK</span>'
+            '<span style="margin-left:auto; font-family:var(--mono); font-size:var(--fs-2xs); color:var(--green);">OK</span>'
         )
         st.markdown(f"""
         <div class="status-row">
             <div class="dot {color}"></div>
-            <span style="font-size:13px; font-weight:{'600' if not ok else '400'};">{label}</span>
+            <span style="font-size:var(--fs-base); font-weight:{'600' if not ok else '400'};">{label}</span>
             {hint_html}
         </div>
         """, unsafe_allow_html=True)
@@ -181,13 +181,13 @@ def _render_send_config(
 
     if not all_required_ok:
         st.markdown(
-            '<div class="alert-box warning" style="font-size:12px;">'
+            '<div class="alert-box warning" style="font-size:var(--fs-sm);">'
             'Cần cấu hình email và có chỉ số đỏ.</div>',
             unsafe_allow_html=True,
         )
     elif not has_recipient:
         st.markdown(
-            '<div class="alert-box warning" style="font-size:12px;">'
+            '<div class="alert-box warning" style="font-size:var(--fs-sm);">'
             '⚠️ Vui lòng nhập địa chỉ người nhận (To) trước khi gửi.</div>',
             unsafe_allow_html=True,
         )
@@ -213,13 +213,13 @@ def _render_send_summary(
     indicators_html = "".join(
         f'<div class="status-row" style="margin-bottom:4px;">'
         f'<div class="dot red"></div>'
-        f'<span style="font-size:12px;">{ind}</span></div>'
+        f'<span style="font-size:var(--fs-sm);">{ind}</span></div>'
         for ind in red_indicators
     )
     st.markdown(f"""
     <div class="config-section">
         <h4>TÓM TẮT SẼ GỬI</h4>
-        <div style="font-size:13px; line-height:2;">
+        <div style="font-size:var(--fs-base); line-height:2;">
             <div>📅 Ngày báo cáo: <strong>{state.get('report_date', 'Chưa xác định')}</strong></div>
             <div>🏢 Chi nhánh: <strong>{config.get('branch', DEFAULT_BRANCH)}</strong></div>
             <div>🔴 Số chỉ số đỏ: <strong>{len(red_indicators)}</strong></div>

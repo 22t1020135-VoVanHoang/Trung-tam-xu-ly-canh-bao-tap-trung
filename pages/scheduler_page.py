@@ -33,7 +33,7 @@ from utils.schedule_helpers import calc_reminder_time, calc_next_daily_run, form
 
 def render(config: dict) -> None:
     st.markdown("""
-    <div class="sys-header">
+    <div class="sys-header orange">
         <div>
             <h1>⏱️ Lịch trình Tự động</h1>
             <div class="subtitle">Cài đặt APScheduler – quét email và gửi phản hồi tự động đúng deadline</div>
@@ -64,7 +64,7 @@ def render(config: dict) -> None:
 
 def _render_job_list(sched_cfg: dict) -> None:
     """Danh sách job — khớp chính xác với 3 job thật chạy trong scheduler_runner.py."""
-    st.markdown('<div class="section-label">LỊCH TRÌNH HIỆN TẠI</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-label primary">LỊCH TRÌNH HIỆN TẠI</div>', unsafe_allow_html=True)
 
     scan_interval = sched_cfg.get("scan_interval_minutes", DEFAULT_SCAN_INTERVAL)
     deadline_h    = sched_cfg.get("reply_deadline_hour",   DEFAULT_REPLY_HOUR)
@@ -110,18 +110,18 @@ def _render_job_list(sched_cfg: dict) -> None:
         status_color = "var(--red)" if job["warning"] else "var(--green)"
         warning_html = (
             f'<div style="margin-top:8px; padding:8px 12px; background:rgba(229,62,62,0.1); '
-            f'border-radius:var(--radius); font-size:11px; color:var(--red-light);">{job["warning"]}</div>'
+            f'border-radius:var(--radius); font-size:var(--fs-xs); color:var(--red-light);">{job["warning"]}</div>'
             if job["warning"] else ""
         )
         st.markdown(f"""
         <div class="config-section" style="padding:16px 20px; margin-bottom:10px;">
             <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
                 <div class="dot {job['color']}"></div>
-                <span style="font-family:var(--mono); font-size:12px; font-weight:600; color:var(--text);">{job['name']}</span>
-                <span style="margin-left:auto; font-family:var(--mono); font-size:10px; color:{status_color}; text-transform:uppercase;">{status_text}</span>
+                <span style="font-family:var(--mono); font-size:var(--fs-sm); font-weight:600; color:var(--text);">{job['name']}</span>
+                <span style="margin-left:auto; font-family:var(--mono); font-size:var(--fs-2xs); color:{status_color}; text-transform:uppercase;">{status_text}</span>
             </div>
-            <div style="font-size:13px; color:var(--text-muted); margin-bottom:6px;">{job['desc']}</div>
-            <div style="display:flex; gap:24px; font-size:11px; font-family:var(--mono);">
+            <div style="font-size:var(--fs-base); color:var(--text-muted); margin-bottom:6px;">{job['desc']}</div>
+            <div style="display:flex; gap:24px; font-size:var(--fs-xs); font-family:var(--mono);">
                 <span><span style="color:var(--text-muted);">LỊCH:</span> <span style="color:var(--text);">{job['schedule']}</span></span>
                 <span><span style="color:var(--text-muted);">TIẾP THEO:</span> <span style="color:var(--text);">{job['next']}</span></span>
             </div>
@@ -148,12 +148,12 @@ def _render_schedule_logs() -> None:
         color = "green" if entry.get("status") == "success" else "red"
         st.markdown(f"""
         <div class="timeline-item">
+            <div class="dot {color}"></div>
             <div class="timeline-time">{entry.get('time','')}</div>
             <div class="timeline-content">
                 <div class="timeline-title">{entry.get('action','')}</div>
                 <div class="timeline-desc">{entry.get('detail','')}</div>
             </div>
-            <div class="dot {color}" style="margin-top:6px;"></div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -205,9 +205,9 @@ def _render_system_clock_check() -> None:
     st.markdown('<div class="section-label">KIỂM TRA GIỜ HỆ THỐNG</div>', unsafe_allow_html=True)
     now_str = datetime.now().strftime("%H:%M:%S — %d/%m/%Y")
     st.markdown(f"""
-    <div class="alert-box info" style="font-size:12px;">
+    <div class="alert-box info" style="font-size:var(--fs-sm);">
         🕐 Giờ máy chủ hiện tại: <strong style="font-family:var(--mono);">{now_str}</strong><br>
-        Múi giờ lịch trình đang cấu hình: <code style="font-size:11px;">{SCHEDULER_TIMEZONE}</code><br>
+        Múi giờ lịch trình đang cấu hình: <code style="font-size:var(--fs-xs);">{SCHEDULER_TIMEZONE}</code><br>
         <span style="color:var(--text-muted);">
             Đối chiếu với giờ thực tế Việt Nam — nếu lệch, kiểm tra lại múi giờ
             của máy chủ Windows (Settings → Time & Language).
@@ -232,7 +232,7 @@ def _render_manual_actions() -> None:
 def _render_startup_guide() -> None:
     with st.expander("📖 Hướng dẫn khởi động hệ thống"):
         st.markdown("""
-        <div style="font-size:13px; line-height:2.2; color:#E8E8EC;">
+        <div style="font-size:var(--fs-base); line-height:2.2; color:#E8E8EC;">
             1. Mở <strong>File Explorer</strong> (phím <code style="background:#2A2A30; padding:2px 6px; border-radius:3px;">Windows + E</code>)<br>
             2. Vào thư mục <code style="background:#2A2A30; padding:2px 6px; border-radius:3px;">E:\\soc-hue\\</code><br>
             3. Bấm đúp chuột vào file <code style="background:#E53E3E; color:white; padding:2px 8px; border-radius:3px;">start_soc.bat</code><br>

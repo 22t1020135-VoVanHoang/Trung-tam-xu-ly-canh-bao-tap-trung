@@ -11,6 +11,10 @@ Thay đổi so với bản cũ:
     hậu, thiếu AUTO_REPLY, REMINDER, SCHEDULE_CONFIG, CONFIG_UPDATE...
   - Nút xoá nhật ký & nút thêm log demo dùng write_json_atomic/append_log
     thay vì json.dump trực tiếp (đồng bộ với toàn hệ thống)
+  - B8: thêm modal xác nhận (st.dialog) trước khi xoá nhật ký vĩnh viễn —
+    trước đây bấm 1 phát là mất sạch không thể khôi phục, không có bước
+    cảnh báo nào. Hành động càng nghiêm trọng (xoá vĩnh viễn dữ liệu) càng
+    cần ma sát (friction) chủ đích để tránh bấm nhầm.
 """
 import streamlit as st
 import json
@@ -20,9 +24,26 @@ from utils.constants     import LOG_FILE
 from utils.state_manager import append_log, write_json_atomic
 
 
+@st.dialog("⚠️ Xác nhận xoá nhật ký")
+def _confirm_delete_dialog() -> None:
+    st.markdown(
+        "Hành động này sẽ xoá **vĩnh viễn toàn bộ nhật ký hoạt động** "
+        "(quét email, gửi báo cáo, cấu hình...). **Không thể khôi phục.**"
+    )
+    col_cancel, col_confirm = st.columns(2)
+    with col_cancel:
+        if st.button("Huỷ bỏ", use_container_width=True):
+            st.rerun()
+    with col_confirm:
+        if st.button("🗑️ Xoá vĩnh viễn", type="primary", use_container_width=True):
+            write_json_atomic(LOG_FILE, [])
+            st.toast("Đã xoá toàn bộ nhật ký", icon="🗑️")
+            st.rerun()
+
+
 def render() -> None:
     st.markdown("""
-    <div class="sys-header">
+    <div class="sys-header blue">
         <div>
             <h1>📜 Nhật ký Hoạt động</h1>
             <div class="subtitle">Lịch sử quét email, tổng hợp và gửi báo cáo</div>
@@ -54,11 +75,7 @@ def _render_filters(logs: list) -> tuple:
 
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("🗑️ Xoá nhật ký", use_container_width=True):
-        write_json_atomic(LOG_FILE, [])
-        # B4: trước đây hành động xóa (destructive) hoàn toàn không có phản
-        # hồi nào — người dùng chỉ biết đã xóa qua việc danh sách trống đi.
-        st.toast("Đã xoá toàn bộ nhật ký", icon="🗑️")
-        st.rerun()
+        _confirm_delete_dialog()
 
     st.markdown("<br>", unsafe_allow_html=True)
     return action_filter, status_filter
@@ -86,7 +103,7 @@ def _render_stats(logs: list) -> None:
 
 
 def _render_log_list(logs: list, action_filter: str, status_filter: str) -> None:
-    st.markdown('<div class="section-label">NHẬT KÝ GẦN ĐÂY</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-label primary">NHẬT KÝ GẦN ĐÂY</div>', unsafe_allow_html=True)
 
     filtered = logs
     if action_filter != "Tất cả":
@@ -108,12 +125,12 @@ def _render_log_list(logs: list, action_filter: str, status_filter: str) -> None
 
         st.markdown(f"""
         <div class="timeline-item">
+            <div class="dot {color}"></div>
             <div class="timeline-time">{entry.get('time','')}</div>
             <div class="timeline-content">
                 <div class="timeline-title">{icon} {entry.get('action','')}</div>
                 <div class="timeline-desc">{entry.get('detail','')}</div>
             </div>
-            <div class="dot {color}" style="margin-top:6px; flex-shrink:0;"></div>
         </div>
         """, unsafe_allow_html=True)
 

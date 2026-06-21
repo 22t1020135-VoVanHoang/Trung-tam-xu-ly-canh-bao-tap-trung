@@ -132,10 +132,10 @@ def _render_status_bar(state: dict, deadline_h: int, deadline_m: int, cfg_ok: bo
         st.markdown(f"""
         <div class="status-row">
             <div class="dot {'green' if state['status'] == 'active' else 'gray'}"></div>
-            <span style="font-family:var(--mono); font-size:12px;">
+            <span style="font-family:var(--mono); font-size:var(--fs-sm);">
                 HỆ THỐNG: {'ĐANG CHẠY' if state['status'] == 'active' else 'STANDBY'}
             </span>
-            <span style="margin-left:auto; font-family:var(--mono); font-size:11px; color:var(--text-muted);">
+            <span style="margin-left:auto; font-family:var(--mono); font-size:var(--fs-xs); color:var(--text-muted);">
                 {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
             </span>
         </div>
@@ -144,14 +144,14 @@ def _render_status_bar(state: dict, deadline_h: int, deadline_m: int, cfg_ok: bo
         st.markdown(f"""
         <div class="status-row">
             <div class="dot orange"></div>
-            <span style="font-size:12px;">Deadline: <strong>{deadline_h:02d}:{deadline_m:02d}</strong> ngày hôm sau</span>
+            <span style="font-size:var(--fs-sm);">Deadline: <strong>{deadline_h:02d}:{deadline_m:02d}</strong> ngày hôm sau</span>
         </div>
         """, unsafe_allow_html=True)
     with col3:
         st.markdown(f"""
         <div class="status-row">
             <div class="dot {'green' if cfg_ok else 'red'}"></div>
-            <span style="font-size:12px;">Config: {'Đã cấu hình' if cfg_ok else 'Chưa cấu hình'}</span>
+            <span style="font-size:var(--fs-sm);">Config: {'Đã cấu hình' if cfg_ok else 'Chưa cấu hình'}</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -166,7 +166,7 @@ def _render_metric_cards(state: dict, red_count: int) -> None:
         </div>
         <div class="metric-card orange">
             <div class="label">Báo cáo ngày</div>
-            <div class="value" style="font-size:1.1rem; padding-top:8px;">{state.get('report_date') or '—'}</div>
+            <div class="value" style="font-size:var(--fs-lg); padding-top:8px;">{state.get('report_date') or '—'}</div>
             <div class="sub">Deadline: {state.get('deadline') or '—'}</div>
         </div>
         <div class="metric-card green">
@@ -176,7 +176,7 @@ def _render_metric_cards(state: dict, red_count: int) -> None:
         </div>
         <div class="metric-card blue">
             <div class="label">Lần quét cuối</div>
-            <div class="value" style="font-size:1rem; padding-top:10px;">{state.get('last_scan') or '—'}</div>
+            <div class="value" style="font-size:var(--fs-md); padding-top:10px;">{state.get('last_scan') or '—'}</div>
             <div class="sub">Tổng: {state.get('total_scans', 0)} lần</div>
         </div>
     </div>
@@ -186,7 +186,7 @@ def _render_metric_cards(state: dict, red_count: int) -> None:
 def _render_workflow_steps(
     config: dict, state: dict, red_count: int, deadline_h: int, deadline_m: int
 ) -> None:
-    st.markdown('<div class="section-label">LUỒNG VẬN HÀNH</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-label primary">LUỒNG VẬN HÀNH</div>', unsafe_allow_html=True)
 
     sender_name = config.get("soc_sender_name", DEFAULT_SOC_SENDER)
     steps = [
@@ -207,11 +207,11 @@ def _render_workflow_steps(
         text_color = "red" if color == "red" else ("text-muted" if color == "gray" else color)
         st.markdown(f"""
         <div class="status-row" style="gap:14px; align-items:flex-start;">
-            <div style="font-family:var(--mono); font-size:1.5rem; font-weight:700;
+            <div style="font-family:var(--mono); font-size:var(--fs-2xl); font-weight:700;
                 color:var(--{text_color}); min-width:32px; line-height:1;">{num}</div>
             <div>
-                <div style="font-weight:600; font-size:13px; color:var(--text);">{title}</div>
-                <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">{desc}</div>
+                <div style="font-weight:600; font-size:var(--fs-base); color:var(--text);">{title}</div>
+                <div style="font-size:var(--fs-sm); color:var(--text-muted); margin-top:2px;">{desc}</div>
             </div>
             <div class="dot {color}" style="margin-left:auto; margin-top:6px; flex-shrink:0;"></div>
         </div>
@@ -226,7 +226,7 @@ def _render_red_indicators_panel(state: dict) -> None:
             st.markdown(f"""
             <div class="status-row">
                 <div class="dot red"></div>
-                <span style="font-size:13px; font-weight:500;">{ind}</span>
+                <span style="font-size:var(--fs-base); font-weight:500;">{ind}</span>
             </div>
             """, unsafe_allow_html=True)
     else:
@@ -265,7 +265,7 @@ def _render_auto_refresh_section() -> None:
         if auto_refresh:
             interval_s = REFRESH_INTERVAL_MS // 1000
             st.markdown(
-                f'<div style="font-family:var(--mono); font-size:11px; '
+                f'<div style="font-family:var(--mono); font-size:var(--fs-xs); '
                 f'color:var(--green); padding:10px 0; display:flex; align-items:center; gap:6px;">'
                 f'<span style="width:6px;height:6px;border-radius:50%;background:var(--green);'
                 f'display:inline-block;box-shadow:0 0 6px var(--green);"></span>'
@@ -274,7 +274,7 @@ def _render_auto_refresh_section() -> None:
             )
         else:
             st.markdown(
-                '<div style="font-family:var(--mono); font-size:11px; '
+                '<div style="font-family:var(--mono); font-size:var(--fs-xs); '
                 'color:var(--text-muted); padding:10px 0;">'
                 'Bật toggle để tự động cập nhật dữ liệu</div>',
                 unsafe_allow_html=True,

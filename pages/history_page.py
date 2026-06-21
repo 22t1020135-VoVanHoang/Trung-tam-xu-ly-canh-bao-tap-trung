@@ -25,7 +25,7 @@ def load_history() -> list:
 
 def render(config: dict):
     st.markdown("""
-    <div class="sys-header">
+    <div class="sys-header blue">
         <div>
             <h1>📈 Lịch sử Báo cáo</h1>
             <div class="subtitle">Xem lại các email giải trình đã gửi, lọc theo ngày</div>
@@ -71,7 +71,7 @@ def render(config: dict):
 
     # ── Danh sách báo cáo ─────────────────────────────────────────────────────
     with col_main:
-        st.markdown('<div class="section-label">DANH SÁCH BÁO CÁO ĐÃ GỬI</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label primary">DANH SÁCH BÁO CÁO ĐÃ GỬI</div>', unsafe_allow_html=True)
 
         # Áp dụng bộ lọc
         filtered = history
@@ -112,12 +112,12 @@ def render(config: dict):
                     st.markdown(f"""
                     <div class="config-section" style="padding:14px;">
                         <h4>THÔNG TIN GỬI</h4>
-                        <div style="font-size:13px; line-height:2.2;">
+                        <div style="font-size:var(--fs-base); line-height:2.2;">
                             <div>📅 Ngày báo cáo : <strong>{entry.get('report_date') or '—'}</strong></div>
                             <div>🕐 Gửi lúc      : <strong>{entry.get('sent_at','—')}</strong></div>
                             <div>📤 Gửi đến      : <strong>{entry.get('to_address','—')}</strong></div>
                             <div>🏢 Chi nhánh    : <strong>{entry.get('branch','—')}</strong></div>
-                            <div style="margin-top:4px; font-size:12px; color:var(--text-muted);">
+                            <div style="margin-top:4px; font-size:var(--fs-sm); color:var(--text-muted);">
                                 {entry.get('subject','—')}
                             </div>
                         </div>
@@ -147,11 +147,11 @@ def render(config: dict):
                     st.markdown(f"""
                     <div class="status-row">
                         <div class="dot {dot}"></div>
-                        <span style="font-size:13px; font-weight:500;">{exp.get('indicator','')}</span>
-                        <span style="color:var(--text-muted); font-size:12px; margin-left:8px;">
-                            → <code style="font-size:11px;">{exp.get('sheet_name','')}</code>
+                        <span style="font-size:var(--fs-base); font-weight:500;">{exp.get('indicator','')}</span>
+                        <span style="color:var(--text-muted); font-size:var(--fs-sm); margin-left:8px;">
+                            → <code style="font-size:var(--fs-xs);">{exp.get('sheet_name','')}</code>
                         </span>
-                        <span style="margin-left:auto; font-family:var(--mono); font-size:11px;
+                        <span style="margin-left:auto; font-family:var(--mono); font-size:var(--fs-xs);
                             color:{'var(--green)' if has_data else 'var(--orange)'};">
                             {exp.get('count', 0)} dòng
                         </span>

@@ -33,7 +33,7 @@ from utils.state_manager import save_config, append_log, has_streamlit_secrets
 
 def render(config: dict) -> None:
     st.markdown("""
-    <div class="sys-header">
+    <div class="sys-header orange">
         <div>
             <h1>⚙️ Cấu hình Hệ thống</h1>
             <div class="subtitle">Thiết lập email, Google Sheets, và thông số hoạt động</div>
@@ -75,7 +75,7 @@ def _render_email_tab(config: dict) -> None:
         st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("""
-    <div class="alert-box info" style="font-size:12px;">
+    <div class="alert-box info" style="font-size:var(--fs-sm);">
         💡 <strong>Gmail:</strong> Dùng <strong>App Password</strong> (Tài khoản Google → Bảo mật → Xác minh 2 bước → Mật khẩu ứng dụng).
     </div>
     """, unsafe_allow_html=True)

@@ -22,7 +22,7 @@ from utils.state_manager import load_state, save_state, append_log
 
 def render(config: dict) -> None:
     st.markdown("""
-    <div class="sys-header">
+    <div class="sys-header blue">
         <div>
             <h1>📧 Quét Email SOC</h1>
             <div class="subtitle">Đọc và phân tích email cảnh báo từ SOC Canh Bao</div>
@@ -51,7 +51,7 @@ def render(config: dict) -> None:
         _render_scan_config(config)
 
     with col_result:
-        st.markdown('<div class="section-label">KẾT QUẢ QUÉT</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label primary">KẾT QUẢ QUÉT</div>', unsafe_allow_html=True)
         # Trigger scan nếu người dùng vừa bấm nút
         if st.session_state.get("trigger_scan"):
             st.session_state.trigger_scan = False
@@ -127,17 +127,17 @@ def _render_email_header(emails: list) -> None:
     st.markdown(f"""
     <div class="config-section" style="margin-bottom:16px;">
         <h4>EMAIL MỚI NHẤT</h4>
-        <div style="font-size:13px; line-height:1.8;">
+        <div style="font-size:var(--fs-base); line-height:1.8;">
             <div>
-                <span style="color:var(--text-muted); font-family:var(--mono); font-size:11px;">TỪ:</span>
+                <span style="color:var(--text-muted); font-family:var(--mono); font-size:var(--fs-xs);">TỪ:</span>
                 {latest['sender']}
             </div>
             <div>
-                <span style="color:var(--text-muted); font-family:var(--mono); font-size:11px;">CHỦ ĐỀ:</span>
+                <span style="color:var(--text-muted); font-family:var(--mono); font-size:var(--fs-xs);">CHỦ ĐỀ:</span>
                 {latest['subject']}
             </div>
             <div>
-                <span style="color:var(--text-muted); font-family:var(--mono); font-size:11px;">NGÀY:</span>
+                <span style="color:var(--text-muted); font-family:var(--mono); font-size:var(--fs-xs);">NGÀY:</span>
                 {latest['date']}
             </div>
         </div>
@@ -152,7 +152,7 @@ def _render_kpi_cards(parsed: dict) -> None:
         st.markdown(f"""
         <div class="metric-card orange" style="padding:14px;">
             <div class="label">Ngày báo cáo</div>
-            <div style="font-size:1rem; font-weight:700; color:var(--orange); margin-top:4px;">
+            <div style="font-size:var(--fs-md); font-weight:700; color:var(--orange); margin-top:4px;">
                 {parsed.get('report_date') or 'Không xác định'}
             </div>
         </div>
@@ -161,7 +161,7 @@ def _render_kpi_cards(parsed: dict) -> None:
         st.markdown(f"""
         <div class="metric-card red" style="padding:14px;">
             <div class="label">Deadline phản hồi</div>
-            <div style="font-size:1rem; font-weight:700; color:var(--red); margin-top:4px;">
+            <div style="font-size:var(--fs-md); font-weight:700; color:var(--red); margin-top:4px;">
                 {parsed.get('deadline') or 'Không xác định'}
             </div>
         </div>
@@ -186,8 +186,8 @@ def _render_red_indicators(parsed: dict) -> None:
             st.markdown(f"""
             <div class="status-row">
                 <div class="dot red"></div>
-                <span style="font-size:13px; font-weight:500;">{ind}</span>
-                <span style="margin-left:auto; font-family:var(--mono); font-size:10px; color:var(--text-muted);">
+                <span style="font-size:var(--fs-base); font-weight:500;">{ind}</span>
+                <span style="margin-left:auto; font-family:var(--mono); font-size:var(--fs-2xs); color:var(--text-muted);">
                     CẦN GIẢI TRÌNH
                 </span>
             </div>

@@ -67,6 +67,15 @@ def render_login():
         0%, 100% { opacity: 1; }
         50%       { opacity: 0.6; }
     }
+    /* B5: tôn trọng "Giảm hiệu ứng chuyển động" của hệ điều hành — cùng fix
+       như app.py, áp dụng riêng vì màn hình login có CSS độc lập. */
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -93,16 +102,16 @@ def render_login():
                     border-top:3px solid var(--red); border-radius:6px;
                     padding:28px 32px 20px; text-align:center; margin-bottom:14px;">
             <div style="display:inline-block; background:var(--red); color:white;
-                        font-family:var(--mono); font-size:10px; padding:3px 12px;
+                        font-family:var(--mono); font-size:var(--fs-2xs); padding:3px 12px;
                         border-radius:2px; letter-spacing:2px; text-transform:uppercase;
                         margin-bottom:14px; animation:pulse-badge 2s infinite;">
                 SOC SYSTEM
             </div>
-            <div style="font-size:1.25rem; font-weight:700; color:var(--text);
+            <div style="font-size:var(--fs-lg); font-weight:700; color:var(--text);
                         letter-spacing:-0.3px; margin-bottom:6px;">
                 FPT Telecom AUTOMATION
             </div>
-            <div style="font-family:var(--mono); font-size:11px; color:var(--text-muted);">
+            <div style="font-family:var(--mono); font-size:var(--fs-xs); color:var(--text-muted);">
                 Chi nhánh Huế &nbsp;·&nbsp; Xác thực để tiếp tục
             </div>
         </div>
@@ -132,7 +141,7 @@ def render_login():
 
         st.markdown("""
         <div style="text-align:center; margin-top:20px;
-                    font-family:var(--mono); font-size:10px; color:var(--text-muted);">
+                    font-family:var(--mono); font-size:var(--fs-2xs); color:var(--text-muted);">
             FPT Telecom · Chi nhánh Huế · SOC Automation v1.0
         </div>
         """, unsafe_allow_html=True)

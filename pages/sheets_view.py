@@ -43,7 +43,7 @@ def render(config: dict) -> None:
 
 def _render_header() -> None:
     st.markdown("""
-    <div class="sys-header">
+    <div class="sys-header green">
       <div>
         <h1>📋 Google Sheets – Giải trình</h1>
         <div class="subtitle">Dữ liệu tự động cập nhật theo Google Sheets</div>
@@ -61,9 +61,9 @@ def _render_info_bar(spreadsheet_id: str) -> None:
         <div class="alert-box info" style="display:flex; align-items:center;
           justify-content:space-between; padding:10px 16px;">
           <span>📊 Spreadsheet ID:
-            <code style="font-family:var(--mono); font-size:11px;">{spreadsheet_id}</code>
+            <code style="font-family:var(--mono); font-size:var(--fs-xs);">{spreadsheet_id}</code>
           </span>
-          <span style="font-family:var(--mono); font-size:11px; color:var(--text-muted);">
+          <span style="font-family:var(--mono); font-size:var(--fs-xs); color:var(--text-muted);">
             Cập nhật lúc: {last_load}
           </span>
         </div>
@@ -72,7 +72,7 @@ def _render_info_bar(spreadsheet_id: str) -> None:
         st.markdown(
             f'<a href="{sheet_url}" target="_blank" style="display:block; text-align:center; '
             f'padding:10px; background:var(--surface2); border:1px solid var(--border); '
-            f'border-radius:3px; color:var(--text); font-family:var(--mono); font-size:12px; '
+            f'border-radius:3px; color:var(--text); font-family:var(--mono); font-size:var(--fs-sm); '
             f'text-decoration:none;">Mở Sheet ↗</a>',
             unsafe_allow_html=True,
         )
@@ -130,7 +130,7 @@ def _render_auto_refresh(
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown(
-        f'<div class="alert-box info" style="font-size:12px; text-align:center;">'
+        f'<div class="alert-box info" style="font-size:var(--fs-sm); text-align:center;">'
         f'🔄 Tự động tải lại mỗi <strong>{refresh_sec}s</strong></div>',
         unsafe_allow_html=True,
     )
@@ -148,7 +148,7 @@ def _render_auto_refresh(
 def _render_main_content(
     creds_path: str, spreadsheet_id: str, selected: list, red_indicators: list
 ) -> None:
-    st.markdown('<div class="section-label">NỘI DUNG GIẢI TRÌNH</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-label primary">NỘI DUNG GIẢI TRÌNH</div>', unsafe_allow_html=True)
 
     indicators_to_show = selected or red_indicators
     if not indicators_to_show:
@@ -220,11 +220,11 @@ def _render_sheets_data(data: list) -> None:
         st.markdown(f"""
         <div class="status-row" style="margin-bottom:6px;">
           <div class="dot {dot_color}"></div>
-          <strong style="font-size:14px; color:var(--text);">{item['indicator']}</strong>
-          <span style="color:var(--text-muted); font-size:12px; margin-left:8px;">
-            → tab: <code style="font-size:11px;">{item['sheet_name']}</code>
+          <strong style="font-size:var(--fs-base); color:var(--text);">{item['indicator']}</strong>
+          <span style="color:var(--text-muted); font-size:var(--fs-sm); margin-left:8px;">
+            → tab: <code style="font-size:var(--fs-xs);">{item['sheet_name']}</code>
           </span>
-          <span style="margin-left:auto; font-family:var(--mono); font-size:11px;
+          <span style="margin-left:auto; font-family:var(--mono); font-size:var(--fs-xs);
             color:{'var(--green)' if has_data else ('var(--red)' if has_error else 'var(--orange)')};">
             {row_label}
           </span>
